@@ -1,6 +1,7 @@
-import { Task } from './task'
+import { Task, TaskRow } from './task'
 import DoPlugin from '../main'
 import { CachedMetadata, TFile } from 'obsidian'
+import { Table } from './table'
 
 export interface CacheUpdate {
   file: TFile,
@@ -9,10 +10,13 @@ export interface CacheUpdate {
 }
 
 export class Tasks {
+  readonly tableName = 'tasks'
   plugin: DoPlugin
+  db: Table<TaskRow>
 
   constructor (plugin: DoPlugin) {
     this.plugin = plugin
+    this.db = new Table<TaskRow>(this.tableName, this.plugin.app)
   }
 
   processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
@@ -22,11 +26,10 @@ export class Tasks {
 
     (cacheUpdate.cache.listItems?.filter(x => x.task) || [])
       .forEach(item => {
-        const task = new Task(this.plugin)
+        const task = new Task(this)
         task.initFromListItem(item, cacheUpdate)
-        console.log(task)
-
       })
-
+    console.log('test')
+    this.db.saveDb()
   }
 }

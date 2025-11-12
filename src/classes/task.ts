@@ -1,10 +1,21 @@
 import { ListItemCache } from 'obsidian'
-import DoPlugin from '../main'
-import { CacheUpdate } from './tasks'
+import { CacheUpdate, Tasks } from './tasks'
 
 export enum TaskStatus {
   Todo = ' ',
   Complete = 'x'
+}
+
+export enum TaskEmoji {
+  Due = '📅',
+  Created = '➕',
+  Scheduled = '⏳'
+}
+
+export interface TaskRow {
+  id: number,
+  status: string,
+  text: string
 }
 
 interface MarkdownTaskElements {
@@ -14,61 +25,37 @@ interface MarkdownTaskElements {
 }
 
 export class Task {
-  plugin: DoPlugin
-  id: number
-  status: string
-  text: string
+  tasks: Tasks
+  data: TaskRow
 
-  constructor (plugin: DoPlugin) {
-    this.plugin = plugin
+  constructor (tasks: Tasks) {
+    this.tasks = tasks
   }
 
   valid () {
-    return !!this.id
+    return !!this.data.id
   }
 
   complete () {
-    return this.status === TaskStatus.Complete
+    return this.data.status === TaskStatus.Complete
   }
 
   initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate) {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
-    const parsed = this.parseMarkdownTaskString(lines[item.position.start.line] || '')
+    const parsed = parseMarkdownTaskString(lines[item.position.start.line] || '', this.tasks.plugin.settings.taskBlockPrefix)
     if (!parsed) {
       // Not able to find a task in this line
       return
     }
 
-    if (!parsed.id) {
-      // TODO: Need to get a new id
-      parsed.id = 0
+    this.data = {
+      id: parsed.id || 0,
+      status: parsed.status,
+      text: parsed.text
     }
-    this.id = parsed.id
-    this.status = parsed.status
-    this.text = parsed.text
-  }
 
-  /**
-   * Parse a markdown task line into its component elements
-   */
-  parseMarkdownTaskString (text: string): MarkdownTaskElements | false {
-    // Get task ID
-    let id
-    [id, text] = getAndRemoveMatch(text, new RegExp(`\\^${this.plugin.settings.taskBlockPrefix}(\\d+)\\s*$`))
-    id = id ? parseInt(id, 10) : undefined
-
-    // Get status
-    let status
-    [status, text] = getAndRemoveMatch(text, /^\s*-\s+\[(.)]\s+/)
-
-    if (status && text) {
-      return {
-        id, status, text
-      }
-    } else {
-      return false
-    }
+    this.tasks.db.insertOrUpdate(this.data)
   }
 }
 
@@ -84,4 +71,26 @@ function getAndRemoveMatch (text: string, regex: RegExp): [string | undefined, s
     text = text.replace(regex, '')
   }
   return [foundText, text.trim()]
+}
+
+/**
+ * Parse a markdown task line into its component elements
+ */
+function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskElements | false {
+  // Get task ID
+  let id
+  [id, text] = getAndRemoveMatch(text, new RegExp(`\\^${prefix}(\\d+)\\s*$`))
+  id = id ? parseInt(id, 10) : undefined
+
+  // Get status
+  let status
+  [status, text] = getAndRemoveMatch(text, /^\s*-\s+\[(.)]\s+/)
+
+  if (status && text) {
+    return {
+      id, status, text
+    }
+  } else {
+    return false
+  }
 }
