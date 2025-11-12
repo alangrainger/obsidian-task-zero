@@ -19,6 +19,7 @@ export class Table<R extends BaseRow> {
   name: string
   dataChanged: Event
   saveTimer: NodeJS.Timeout
+  initialised = false
 
   private data: Data<R> = {
     autoincrement: 1,
@@ -94,7 +95,7 @@ export class Table<R extends BaseRow> {
         const existing = this.data.rows[index]
         // Don't update if the data is the same
         if (Object.keys(data).every(key => existing[key] === data[key])) {
-          return null
+          return data
         }
         this.data.rows[index] = data
       } else {
@@ -133,19 +134,25 @@ export class Table<R extends BaseRow> {
       // Double-check the autoincrement
       const existing = Math.max(...this.data.rows.map(x => x.id)) || 0
       this.data.autoincrement = Math.max(this.data.autoincrement, existing + 1)
+      this.initialised = true
     } catch (e) {
       // nothing
+      console.log('Database not correctly initiliased')
     }
   }
 
   saveDb () {
+    if (!this.initialised) {
+      console.log('Database not correctly initiliased')
+      return
+    }
     dispatchEvent(this.dataChanged)
     clearTimeout(this.saveTimer)
     this.saveTimer = setTimeout(async () => {
       console.log('Saving DB file ' + this.filename)
       const data = JSON.stringify(this.data, null, 2)
       this.app.vault.adapter.write(this.filename, data).then()
-    }, 5000)
+    }, 3000)
   }
 }
 

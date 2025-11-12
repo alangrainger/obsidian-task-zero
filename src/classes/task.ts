@@ -15,7 +15,15 @@ export enum TaskEmoji {
 export interface TaskRow {
   id: number,
   status: string,
-  text: string
+  text: string,
+  path: string
+}
+
+const DEFAULT_ROW: TaskRow = {
+  id: 0,
+  status: ' ',
+  text: '',
+  path: ''
 }
 
 interface MarkdownTaskElements {
@@ -43,19 +51,35 @@ export class Task {
   initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate) {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
-    const parsed = parseMarkdownTaskString(lines[item.position.start.line] || '', this.tasks.plugin.settings.taskBlockPrefix)
+    const originalLine = lines[item.position.start.line] || ''
+    const parsed = parseMarkdownTaskString(originalLine, this.tasks.plugin.settings.taskBlockPrefix)
     if (!parsed) {
       // Not able to find a task in this line
       return
     }
-
-    this.data = {
+    // Insert into DB or update existing row
+    const result = this.tasks.db.insertOrUpdate({
       id: parsed.id || 0,
       status: parsed.status,
-      text: parsed.text
+      text: parsed.text,
+      path: cacheUpdate.file.path
+    })
+    if (!result) {
+      // Unable to insert data - reset to default data
+      this.data = Object.assign({}, DEFAULT_ROW)
+      return
+    } else {
+      this.data = result
     }
+  }
 
-    this.tasks.db.insertOrUpdate(this.data)
+  generateMarkdownTask () {
+    const parts = [
+      `- [${this.data.status}]`,
+      this.data.text,
+      '^' + this.tasks.plugin.settings.taskBlockPrefix + this.data.id
+    ]
+    return parts.join(' ')
   }
 }
 
@@ -88,7 +112,9 @@ function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskEle
 
   if (status && text) {
     return {
-      id, status, text
+      id,
+      status,
+      text
     }
   } else {
     return false
