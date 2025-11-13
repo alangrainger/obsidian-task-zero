@@ -1,6 +1,6 @@
-import { Task, TaskRow } from './task'
+import { Task, type TaskRow, TaskStatus } from './task'
 import DoPlugin from '../main'
-import { CachedMetadata, ListItemCache, moment, TFile } from 'obsidian'
+import { type CachedMetadata, type ListItemCache, moment, TFile } from 'obsidian'
 import { Table } from './table'
 
 export interface CacheUpdate {
@@ -8,6 +8,8 @@ export interface CacheUpdate {
   data: string,
   cache: CachedMetadata
 }
+
+export const TaskChangeEvent = 'do:tasks-change'
 
 export class Tasks {
   readonly tableName = 'tasks'
@@ -23,7 +25,7 @@ export class Tasks {
     const processed: { task: Task, cacheItem: ListItemCache }[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
       const task = new Task(this)
-      task.initFromListItem(item, cacheUpdate)
+      task.initFromListItem(item, cacheUpdate, processed.map(x => x.task.id))
       if (task.valid()) processed.push({ task, cacheItem: item })
     }
 
@@ -34,7 +36,7 @@ export class Tasks {
         row.path === cacheUpdate.file.path &&
         !processedIds.includes(row.id))
       .forEach(task => {
-        task.orphaned = moment().valueOf()
+        task.orphaned = moment.default().valueOf()
         this.db.saveDb()
       })
 
@@ -57,12 +59,28 @@ export class Tasks {
         console.log('Cache and file differ')
         processed.forEach(row => {
           if (row.task.id) {
-            row.task.orphaned = moment().valueOf()
+            row.task.orphaned = moment.default().valueOf()
             this.db.update(row.task.getData())
           }
         })
       }
       return data
     })
+  }
+
+  getTaskById (id: number) {
+    const task = new Task(this)
+    task.initFromId(id)
+    return task
+  }
+
+  getActiveTasks () {
+    return this.db.rows()
+      .filter(row => !row.orphaned && row.status !== TaskStatus.Complete)
+      .map(row => {
+        const task = new Task(this)
+        task.initFromDb(row)
+        return task
+      })
   }
 }

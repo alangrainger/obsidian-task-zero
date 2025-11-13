@@ -1,5 +1,5 @@
-import { ListItemCache, TFile } from 'obsidian'
-import { CacheUpdate, Tasks } from './tasks'
+import { type ListItemCache, moment, TFile } from 'obsidian'
+import { type CacheUpdate, Tasks } from './tasks'
 
 export enum TaskStatus {
   Todo = ' ',
@@ -20,7 +20,8 @@ export interface TaskRow {
   /**
    * If the task is not present in any note
    */
-  orphaned: number
+  orphaned: number,
+  created: string
 }
 
 const DEFAULT_ROW: TaskRow = {
@@ -28,7 +29,8 @@ const DEFAULT_ROW: TaskRow = {
   status: ' ',
   text: '',
   path: '',
-  orphaned: 0
+  orphaned: 0,
+  created: ''
 }
 
 interface MarkdownTaskElements {
@@ -50,6 +52,10 @@ export class Task {
     this.tasks = tasks
   }
 
+  reset () {
+    this.setData(DEFAULT_ROW)
+  }
+
   valid () {
     return !!this.id
   }
@@ -60,7 +66,8 @@ export class Task {
       status: this.status,
       text: this.text,
       path: this.path,
-      orphaned: this.orphaned
+      orphaned: this.orphaned,
+      created: moment().format()
     }
   }
 
@@ -73,7 +80,20 @@ export class Task {
     return this.status === TaskStatus.Complete
   }
 
-  initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate) {
+  initFromId (id: number) {
+    const row = this.tasks.db.getRow(id)
+    if (row) {
+      this.initFromDb(row)
+    } else {
+      this.reset()
+    }
+  }
+
+  initFromDb (row: TaskRow) {
+    this.setData(row)
+  }
+
+  initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate, blacklistIds: number[]) {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
     const originalLine = lines[item.position.start.line] || ''
@@ -82,22 +102,35 @@ export class Task {
       // Not able to find a task in this line
       return
     }
-    // Insert into DB or update existing row
-    const result = this.tasks.db.insertOrUpdate({
-      id: parsed.id || 0,
+
+    // Check if this ID has already been used on this page (duplicate ID)
+    if (parsed.id && blacklistIds.includes(parsed.id)) parsed.id = 0
+
+    // Get task from DB
+    const record = Object.assign({}, DEFAULT_ROW)
+    if (parsed.id) {
+      // Existing row
+      const existing = this.tasks.db.getRow(parsed.id)
+      if (existing) Object.assign(record, existing)
+    } else {
+      // New record
+      record.created = moment().format()
+    }
+    // Update the record from the parsed data
+    Object.assign(record, {
       status: parsed.status,
       text: parsed.text,
       path: cacheUpdate.file.path,
       orphaned: 0
     })
+    const result = this.tasks.db.insertOrUpdate(record)
     if (!result) {
       // Unable to insert data - reset to default data
       // Which will show task.valid() === false
-      this.setData(DEFAULT_ROW)
+      this.reset()
       return
     } else {
       this.setData(result)
-      this.update().then()
     }
   }
 
@@ -118,11 +151,12 @@ export class Task {
       console.log('Unable to update task ' + this.text + ' as there is no ID or path for it')
       return
     }
+    this.tasks.db.update(this.getData())
     const tfile = this.tasks.plugin.app.vault.getAbstractFileByPath(this.path)
     if (tfile instanceof TFile) {
       await this.tasks.plugin.app.vault.process(tfile, data => {
-        data.replace(new RegExp(`^\s*- \[.][^$]+\^${this.tasks.plugin.settings.taskBlockPrefix}\\d+\s*$`, 's'), this.generateMarkdownTask())
-        return data
+        console.log('task update()')
+        return data.replace(new RegExp(`^[ \\t]*- \\[.][^$\n]+\\^${this.tasks.plugin.settings.taskBlockPrefix}\\d+\\s*$`, 'm'), this.generateMarkdownTask())
       })
     }
   }

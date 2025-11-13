@@ -1,4 +1,5 @@
 import { App, debounce, moment } from 'obsidian'
+import { TaskChangeEvent } from './tasks'
 
 const PLUGIN_ID = require('../../manifest.json').id
 
@@ -34,7 +35,7 @@ export class Table<R extends BaseRow> {
   constructor (name: string, app: App) {
     this.app = app
     this.name = name
-    this.dataChanged = new Event(`do:${name}-change`)
+    this.dataChanged = new Event(TaskChangeEvent)
     this.loadDb().then()
 
     // Set up debounce for database write to disk
@@ -95,7 +96,6 @@ export class Table<R extends BaseRow> {
       const existing = this.data.rows[index]
       // Don't update if the data is the same
       if (Object.keys(data).every(key => existing[key] === data[key])) {
-        console.log('same data')
         return null
       }
       this.data.rows[index] = data

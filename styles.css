@@ -1,5 +1,63 @@
 /* Hide the block references in task lines */
 .HyperMD-task-line > .cm-blockid {
-    opacity: 20%;
-    display: none;
+    opacity: 40%;
+    font-size: 60% !important;
+}
+
+.gtd-view {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.gtd-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.gtd-table td {
+    padding: 4px;
+}
+.gtd-table input {
+    vertical-align: middle;
+}
+.gtd-table input[type=checkbox] {
+    margin: 0;
+    margin-inline-end: 0;
+}
+.gtd-table tbody tr:hover {
+    background-color: var(--interactive-hover);
+}
+.gtd-table-checkbox {
+    width: 10px;
+}
+.gtd-table-task {
+    max-width: 400px;
+}
+.gtd-table-note {
+    max-width: 100px;
+}
+
+.gtd-table-clip {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gtd-sidebar {
+    position: fixed;
+    z-index: 5;
+    top: 0;
+    right: 0;
+    width: 250px; /* Adjust as needed */
+    height: 100%;
+    padding: 10px;
+    background-color: var(--background-primary-alt);
+    border-left: solid 1px var(--background-modifier-border);
+}
+
+.gtd-sidebar .setting-item {
+    display: block;
+}
+
+.gtd-sidebar  input {
+    width: 100%;
 }
