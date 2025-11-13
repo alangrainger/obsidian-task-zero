@@ -7,13 +7,15 @@
   let isOpen = true
   export let task: Task | undefined
 
-  const setText = debounce((event: Event) => {
+  // TODO: change debounce to timeout after all edits finished
+  const setText = debounce((task: Task, event: Event) => {
     // Task text is required - cannot be blank
     const target = event.target as HTMLInputElement
     if (target.value) {
-      console.log('Set task text:', target.value)
+      task.text = target.value
+      task.update()
     }
-  }, 1000)
+  }, 4000)
 
   const toggleSidebar = () => isOpen = !isOpen
 </script>
@@ -26,7 +28,7 @@
         <div class="setting-item" style="display:block;">
             <div class="setting-item-name">Task</div>
             <!--<div class="setting-item-description"></div>-->
-            <input type="text" spellcheck="false" value="{task.text}" on:input={setText}>
+            <input type="text" spellcheck="false" value="{task.text}" on:input={(event) => { setText(task, event) }}>
         </div>
     </aside>
 {/if}

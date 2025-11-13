@@ -20,7 +20,7 @@
   }
 
   // Update tasks list when tasks DB changes
-  addEventListener(TaskChangeEvent, updateView)
+  // addEventListener(TaskChangeEvent, updateView)
 
   // Immediately update the tasks list on component mount
   onMount(updateView)
