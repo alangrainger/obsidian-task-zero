@@ -1,4 +1,4 @@
-import { CachedMetadata, debounce, Plugin, TFile } from 'obsidian'
+import { Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, DoPluginSettings, DoSettingTab } from './settings'
 import { Tasks } from './classes/tasks'
 
@@ -21,7 +21,7 @@ export default class DoPlugin extends Plugin {
       this.updateTimer[file.path] = setTimeout(() => {
         console.log('Processing ' + file.basename)
         this.tasks.processTasksFromCacheUpdate({ file, data, cache })
-      }, 5000)
+      }, 2000)
     }))
   }
 

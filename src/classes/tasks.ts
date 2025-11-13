@@ -1,6 +1,6 @@
 import { Task, TaskRow } from './task'
 import DoPlugin from '../main'
-import { CachedMetadata, ListItemCache, TFile } from 'obsidian'
+import { CachedMetadata, ListItemCache, moment, TFile } from 'obsidian'
 import { Table } from './table'
 
 export interface CacheUpdate {
@@ -20,12 +20,23 @@ export class Tasks {
   }
 
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
-    const tasks: {task: Task, cacheItem: ListItemCache}[] = []
+    const processed: { task: Task, cacheItem: ListItemCache }[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
       const task = new Task(this)
       task.initFromListItem(item, cacheUpdate)
-      tasks.push({task, cacheItem: item})
+      if (task.valid()) processed.push({ task, cacheItem: item })
     }
+
+    // Orphan tasks in the DB which are no longer present in the note
+    const processedIds = processed.map(x => x.task.id)
+    this.db.rows()
+      .filter(row =>
+        row.path === cacheUpdate.file.path &&
+        !processedIds.includes(row.id))
+      .forEach(task => {
+        task.orphaned = moment().valueOf()
+        this.db.saveDb()
+      })
 
     // Update the file markdown contents if needed
     // Modify the original markdown task line if necessary
@@ -34,7 +45,7 @@ export class Tasks {
         // The live file contents is the same as the expected contents from the cache
         // (this is the ideal case)
         const lines = cacheUpdate.data.split('\n')
-        for (const row of tasks) {
+        for (const row of processed) {
           // TODO: handle indentation
           lines[row.cacheItem.position.start.line] = row.task.generateMarkdownTask()
         }
@@ -42,9 +53,14 @@ export class Tasks {
       } else {
         // Cache and file differ - this is bad.
         // We don't want to modify the file here and risk content loss.
-        // Better to drop these tasks from the DB and re-process them again next time.
+        // Orphan these tasks in the DB and re-process them again next time.
         console.log('Cache and file differ')
-        tasks.forEach(row => this.db.delete(row.task.data.id))
+        processed.forEach(row => {
+          if (row.task.id) {
+            row.task.orphaned = moment().valueOf()
+            this.db.update(row.task.getData())
+          }
+        })
       }
       return data
     })

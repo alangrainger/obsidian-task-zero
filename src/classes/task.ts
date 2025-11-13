@@ -1,4 +1,4 @@
-import { ListItemCache } from 'obsidian'
+import { ListItemCache, TFile } from 'obsidian'
 import { CacheUpdate, Tasks } from './tasks'
 
 export enum TaskStatus {
@@ -16,14 +16,19 @@ export interface TaskRow {
   id: number,
   status: string,
   text: string,
-  path: string
+  path: string,
+  /**
+   * If the task is not present in any note
+   */
+  orphaned: number
 }
 
 const DEFAULT_ROW: TaskRow = {
   id: 0,
   status: ' ',
   text: '',
-  path: ''
+  path: '',
+  orphaned: 0
 }
 
 interface MarkdownTaskElements {
@@ -34,18 +39,38 @@ interface MarkdownTaskElements {
 
 export class Task {
   tasks: Tasks
-  data: TaskRow
+
+  id: number
+  status: string
+  text: string
+  path: string
+  orphaned: number
 
   constructor (tasks: Tasks) {
     this.tasks = tasks
   }
 
   valid () {
-    return !!this.data.id
+    return !!this.id
   }
 
-  complete () {
-    return this.data.status === TaskStatus.Complete
+  getData (): TaskRow {
+    return {
+      id: this.id,
+      status: this.status,
+      text: this.text,
+      path: this.path,
+      orphaned: this.orphaned
+    }
+  }
+
+  setData (data: TaskRow) {
+    // @ts-ignore
+    Object.keys(data).forEach(key => this[key] = data[key])
+  }
+
+  completed () {
+    return this.status === TaskStatus.Complete
   }
 
   initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate) {
@@ -62,24 +87,44 @@ export class Task {
       id: parsed.id || 0,
       status: parsed.status,
       text: parsed.text,
-      path: cacheUpdate.file.path
+      path: cacheUpdate.file.path,
+      orphaned: 0
     })
     if (!result) {
       // Unable to insert data - reset to default data
-      this.data = Object.assign({}, DEFAULT_ROW)
+      // Which will show task.valid() === false
+      this.setData(DEFAULT_ROW)
       return
     } else {
-      this.data = result
+      this.setData(result)
+      this.update().then()
     }
   }
 
   generateMarkdownTask () {
     const parts = [
-      `- [${this.data.status}]`,
-      this.data.text,
-      '^' + this.tasks.plugin.settings.taskBlockPrefix + this.data.id
+      `- [${this.status}]`,
+      this.text,
+      '^' + this.tasks.plugin.settings.taskBlockPrefix + this.id
     ]
     return parts.join(' ')
+  }
+
+  /**
+   * Updates the database and markdown note
+   */
+  async update () {
+    if (!this.id || !this.path) {
+      console.log('Unable to update task ' + this.text + ' as there is no ID or path for it')
+      return
+    }
+    const tfile = this.tasks.plugin.app.vault.getAbstractFileByPath(this.path)
+    if (tfile instanceof TFile) {
+      await this.tasks.plugin.app.vault.process(tfile, data => {
+        data.replace(new RegExp(`^\s*- \[.][^$]+\^${this.tasks.plugin.settings.taskBlockPrefix}\\d+\s*$`, 's'), this.generateMarkdownTask())
+        return data
+      })
+    }
   }
 }
 

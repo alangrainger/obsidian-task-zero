@@ -1,4 +1,4 @@
-import { App, moment } from 'obsidian'
+import { App, debounce, moment } from 'obsidian'
 
 const PLUGIN_ID = require('../../manifest.json').id
 
@@ -21,6 +21,11 @@ export class Table<R extends BaseRow> {
   saveTimer: NodeJS.Timeout
   initialised = false
 
+  /**
+   * Save data to disk. This function is debounced.
+   */
+  saveDb: () => void
+
   private data: Data<R> = {
     autoincrement: 1,
     rows: []
@@ -31,6 +36,12 @@ export class Table<R extends BaseRow> {
     this.name = name
     this.dataChanged = new Event(`do:${name}-change`)
     this.loadDb().then()
+
+    // Set up debounce for database write to disk
+    this.saveDb = debounce(() => {
+      dispatchEvent(this.dataChanged)
+      this.write().then()
+    }, 3000)
   }
 
   import (data: string) {
@@ -70,45 +81,43 @@ export class Table<R extends BaseRow> {
     }
   }
 
-  /* update (data: T, index?: number) {
-    index = index || this.data.rows.findIndex(x => x.id === data.id)
-    if (index !== -1) {
-      this.data.rows[index] = data
-      return data
-    } else {
-      console.log('Existing row not found', data)
-      return null
-    }
-  } */
-
   /**
-   * Insert or Update a row. Returns NULL if no change to DB.
+   * Update a row
+   * @param data
    */
-  insertOrUpdate (data: R) {
-    let result = null
-    if (data.id) {
-      // Update the autoincrement in case of imported or manually edited tasks
-      this.data.autoincrement = Math.max(this.data.autoincrement, data.id + 1)
-      const index = this.data.rows.findIndex(x => x.id === data.id)
-      if (index !== -1) {
-        // Existing row found with this ID
-        const existing = this.data.rows[index]
-        // Don't update if the data is the same
-        if (Object.keys(data).every(key => existing[key] === data[key])) {
-          return data
-        }
-        this.data.rows[index] = data
-      } else {
-        // A task with this ID was not found in the database
-        data.created = moment().format()
-        this.data.rows.push(data)
+  update (data: R) {
+    if (!data.id) return null
+    // Update the autoincrement in case of imported or manually edited tasks
+    this.data.autoincrement = Math.max(this.data.autoincrement, data.id + 1)
+    const index = this.data.rows.findIndex(x => x.id === data.id)
+    if (index !== -1) {
+      // Existing row found with this ID
+      const existing = this.data.rows[index]
+      // Don't update if the data is the same
+      if (Object.keys(data).every(key => existing[key] === data[key])) {
+        console.log('same data')
+        return null
       }
-      result = data
+      this.data.rows[index] = data
     } else {
-      result = this.insert(data)
+      // A task with this ID was not found in the database
+      data.created = moment().format()
+      this.data.rows.push(data)
     }
     this.saveDb()
-    return result
+    return data
+  }
+
+  /**
+   * Insert or Update a row
+   */
+  insertOrUpdate (data: R) {
+    if (data.id) {
+      this.update(data)
+      return data
+    } else {
+      return this.insert(data)
+    }
   }
 
   delete (id: number) {
@@ -141,18 +150,14 @@ export class Table<R extends BaseRow> {
     }
   }
 
-  saveDb () {
+  async write () {
     if (!this.initialised) {
       console.log('Database not correctly initiliased')
       return
     }
-    dispatchEvent(this.dataChanged)
-    clearTimeout(this.saveTimer)
-    this.saveTimer = setTimeout(async () => {
-      console.log('Saving DB file ' + this.filename)
-      const data = JSON.stringify(this.data, null, 2)
-      this.app.vault.adapter.write(this.filename, data).then()
-    }, 3000)
+    console.log('Saving DB file ' + this.filename)
+    const data = JSON.stringify(this.data, null, 2)
+    await this.app.vault.adapter.write(this.filename, data)
   }
 }
 
