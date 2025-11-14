@@ -1,10 +1,11 @@
 <script lang="ts">
   import NoteLink from './NoteLink.svelte'
   import Sidebar from './Sidebar.svelte'
+  import Checkbox from './Checkbox.svelte'
 
   import { onDestroy, onMount } from 'svelte'
   import type DoPlugin from '../../main'
-  import { TaskStatus } from '../../classes/task'
+  import { Task, type TaskRow, TaskStatus } from '../../classes/task'
   import type { State } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
 
@@ -31,7 +32,10 @@
       .filter(row => !row.orphaned && row.status !== TaskStatus.Complete)
   }
 
-  function updateCheckbox () {
+  const updateDb = (row: TaskRow) => {
+    console.log('Updating DB row ' + row.id)
+    const task = new Task(plugin.tasks).initFromRow(row)
+    task.update()
   }
 
   // Update tasks list when tasks DB changes
@@ -63,7 +67,7 @@
         {#each state.tasks as row}
             <tr onclick={() => {state.activeIndex = state.tasks.findIndex(x => x.id === row.id)}}>
                 <td class="gtd-table-checkbox">
-                    <!--<Checkbox checked={row.status === 'x'} on:update={(event) => { updateCheckbox(row, event.detail) }}/>-->
+                    <Checkbox row={row}/>
                 </td>
                 <td class="gtd-table-task">
                     <div class="gtd-table-clip">

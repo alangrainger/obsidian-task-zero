@@ -1,13 +1,11 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte'
+  import { type TaskRow, TaskStatus } from '../../classes/task'
 
-  export let checked = false
-  const dispatch = createEventDispatcher()
-
-  function toggle () {
-    checked = !checked
-    dispatch('update', checked)
+  interface Props {
+    row: TaskRow
   }
+
+  let { row }: Props = $props()
 </script>
 
-<input type="checkbox" {checked} on:click={toggle} class="task-list-item-checkbox">
+<input type="checkbox" checked={row.status === TaskStatus.Complete} class="task-list-item-checkbox">
