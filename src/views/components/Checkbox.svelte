@@ -1,11 +1,17 @@
 <script lang="ts">
-  import { type TaskRow, TaskStatus } from '../../classes/task'
+  import { type Task, TaskStatus } from '../../classes/task.svelte'
 
   interface Props {
-    row: TaskRow
+    task: Task
   }
 
-  let { row }: Props = $props()
+  let { task }: Props = $props()
+
+  function toggle(event: Event) {
+    event.stopPropagation();
+    task.toggle()
+    task.update()
+  }
 </script>
 
-<input type="checkbox" checked={row.status === TaskStatus.Complete} class="task-list-item-checkbox">
+<input type="checkbox" checked={task.status === TaskStatus.Complete} onclick={toggle} class="task-list-item-checkbox">

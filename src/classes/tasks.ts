@@ -1,4 +1,4 @@
-import { Task, type TaskRow, TaskStatus } from './task'
+import { Task, type TaskRow, TaskStatus } from './task.svelte'
 import DoPlugin from '../main'
 import { type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table } from './table'

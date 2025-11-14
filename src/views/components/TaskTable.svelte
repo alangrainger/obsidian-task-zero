@@ -5,9 +5,9 @@
 
   import { onDestroy, onMount } from 'svelte'
   import type DoPlugin from '../../main'
-  import { Task, type TaskRow, TaskStatus } from '../../classes/task'
   import type { State } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
+  import type { Task } from '../../classes/task.svelte'
 
   interface Props {
     plugin: DoPlugin;
@@ -18,7 +18,7 @@
   }: Props = $props()
 
   let state: State = $state({
-    activeIndex: -1,
+    activeId: 0,
     tasks: [],
     sidebar: {
       open: true,
@@ -28,14 +28,17 @@
 
   export function updateView () {
     console.log('Updating view')
-    state.tasks = plugin.tasks.db.rows()
-      .filter(row => !row.orphaned && row.status !== TaskStatus.Complete)
+    state.tasks = plugin.tasks.getActiveTasks()
   }
 
-  const updateDb = (row: TaskRow) => {
-    console.log('Updating DB row ' + row.id)
-    const task = new Task(plugin.tasks).initFromRow(row)
-    task.update()
+  function toggleSidebar (selectedTask: Task) {
+    if (state.activeId === selectedTask.id && state.sidebar.open) {
+      state.sidebar.open = false
+      state.activeId = 0
+    } else {
+      state.sidebar.open = true
+      state.activeId = selectedTask.id
+    }
   }
 
   // Update tasks list when tasks DB changes
@@ -64,22 +67,22 @@
         </tr>
         </thead>
         <tbody>
-        {#each state.tasks as row}
-            <tr onclick={() => {state.activeIndex = state.tasks.findIndex(x => x.id === row.id)}}>
+        {#each state.tasks as task}
+            <tr onclick={() => toggleSidebar(task)}>
                 <td class="gtd-table-checkbox">
-                    <Checkbox row={row}/>
+                    <Checkbox {task}/>
                 </td>
                 <td class="gtd-table-task">
                     <div class="gtd-table-clip">
-                        {row.text}
+                        {task.text}
                     </div>
                 </td>
                 <td class="gtd-table-note">
                     <div class="gtd-table-clip">
-                        <NoteLink app={plugin.app} path={row.path}/>
+                        <NoteLink app={plugin.app} path={task.path}/>
                     </div>
                 </td>
-                <td>{row.status}</td>
+                <td>{task.status}</td>
             </tr>
         {/each}
         </tbody>

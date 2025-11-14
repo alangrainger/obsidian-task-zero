@@ -1,8 +1,8 @@
-import type { TaskRow } from '../classes/task'
+import type { Task } from '../classes/task.svelte'
 
 export interface State {
-  activeIndex: number;
-  tasks: TaskRow[];
+  activeId: number;
+  tasks: Task[];
   sidebar: {
     open: boolean;
     element?: HTMLElement;

@@ -46,8 +46,8 @@ export class Task {
   tasks: Tasks
 
   id = 0
-  status = ' '
-  text = ''
+  status = $state(' ')
+  text = $state('')
   path = ''
   orphaned = 0
   created = ''
@@ -62,27 +62,6 @@ export class Task {
 
   valid () {
     return !!this.id
-  }
-
-  isDirty () {
-    if (!this.id) {
-      console.log('new')
-      return true
-    } // new task
-    // Get DB data
-    const dbData = this.tasks.db.getRow(this.id)
-    if (!dbData) {
-      console.log('no dbdata')
-      return true
-    } else {
-      const data = this.getData()
-      console.log(data, dbData)
-      const res = Object.keys(data).some(key => data[key] !== dbData[key])
-      if (res) {
-        console.log(data, dbData)
-      }
-      return res
-    }
   }
 
   getData (): TaskRow {
@@ -167,6 +146,10 @@ export class Task {
       isUpdated,
       valid: this.valid()
     }
+  }
+
+  toggle () {
+    this.status = this.status === TaskStatus.Complete ? TaskStatus.Todo : TaskStatus.Complete
   }
 
   generateMarkdownTask () {

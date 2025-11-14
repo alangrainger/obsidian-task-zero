@@ -3,6 +3,9 @@ import process from 'process'
 import builtins from 'builtin-modules'
 import esbuildSvelte from 'esbuild-svelte'
 import { sveltePreprocess } from 'svelte-preprocess'
+import { readFile } from 'fs/promises';
+import { compileModule } from 'svelte/compiler';
+import { transformSync } from 'esbuild';
 
 const banner =
 	`/*
@@ -19,6 +22,35 @@ const context = await esbuild.context({
 			compilerOptions: { css: 'injected' },
 			preprocess: sveltePreprocess(),
 		}),
+		// Add this plugin for .svelte.ts files
+		{
+			name: 'svelte-runes-modules',
+			setup(build) {
+				build.onLoad({ filter: /\.svelte\.(ts|js)$/ }, async (args) => {
+					let source = await readFile(args.path, 'utf8');
+
+					// Transform TypeScript to JavaScript first
+					if (args.path.endsWith('.ts')) {
+						const transformed = transformSync(source, {
+							loader: 'ts',
+							target: 'es2020'
+						});
+						source = transformed.code;
+					}
+
+					// Then compile with Svelte
+					const result = compileModule(source, {
+						filename: args.path,
+						dev: build.initialOptions.minify !== true
+					});
+
+					return {
+						contents: result.js.code,
+						loader: 'js'
+					};
+				});
+			}
+		}
 	],
 	banner: {
 		js: banner,
