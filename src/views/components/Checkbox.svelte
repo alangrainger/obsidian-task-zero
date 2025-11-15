@@ -10,7 +10,6 @@
   function toggle(event: Event) {
     event.stopPropagation();
     task.toggle()
-    task.update()
   }
 </script>
 

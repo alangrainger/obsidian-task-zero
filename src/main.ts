@@ -37,15 +37,9 @@ export default class DoPlugin extends Plugin {
       }, 3000)
     }))
 
-    // Update the tasks table when user switches to that view
+    // Notify the view when it is visible
     this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-      if (leaf?.view instanceof DoTaskView) {
-        this.view?.table?.setActive(true)
-        // this.view.enableScope()
-      } else {
-        this.view?.table?.setActive(false)
-        // this.view.disableScope()
-      }
+      this.view?.table?.setActive(leaf?.view instanceof DoTaskView)
     }))
   }
 

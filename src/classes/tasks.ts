@@ -28,8 +28,12 @@ export class Tasks {
     }, 5000, true)
   }
 
+  get blockPrefix () {
+    return this.plugin.settings.taskBlockPrefix
+  }
+
   taskLineRegex (id: number) {
-    const prefix = this.plugin.settings.taskBlockPrefix
+    const prefix = this.blockPrefix
     return new RegExp(`^[ \\t]*- \\[.][^$\n]+\\^${prefix}${id}[ \\t]*$`, 'm')
   }
 

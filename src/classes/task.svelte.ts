@@ -111,7 +111,7 @@ export class Task {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
     const originalLine = lines[item.position.start.line] || ''
-    const parsed = parseMarkdownTaskString(originalLine, this.tasks.plugin.settings.taskBlockPrefix)
+    const parsed = parseMarkdownTaskString(originalLine, this.tasks.blockPrefix)
     if (!parsed) {
       // Not able to find a task in this line
       return this.initResult()
@@ -158,13 +158,14 @@ export class Task {
 
   toggle () {
     this.status = this.status === TaskStatus.DONE ? TaskStatus.TODO : TaskStatus.DONE
+    this.update()
   }
 
   generateMarkdownTask () {
     const parts = [
       `- [${this.status}]`,
       this.text,
-      '^' + this.tasks.plugin.settings.taskBlockPrefix + this.id
+      '^' + this.tasks.blockPrefix + this.id
     ]
     return parts.join(' ')
   }
@@ -172,7 +173,7 @@ export class Task {
   /**
    * Updates the database and markdown note
    */
-  async update () {
+  update () {
     if (!this.id || !this.path) {
       console.log('Unable to update task ' + this.text + ' as there is no ID or path for it')
       return
