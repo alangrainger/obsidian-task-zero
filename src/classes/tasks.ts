@@ -6,9 +6,14 @@ import { DatabaseEvent, dbEvents } from './database-events'
 import { debug, moment } from '../functions'
 
 export interface CacheUpdate {
-  file: TFile,
-  data: string,
+  file: TFile
+  data: string
   cache: CachedMetadata
+}
+
+export type CacheUpdateItem = {
+  task: Task
+  cacheItem: ListItemCache
 }
 
 export const TaskChangeEvent = 'do:tasks-change'
@@ -42,10 +47,10 @@ export class Tasks {
 
     debug('Processing cache update for ' + cacheUpdate.file.path)
 
-    const processed: { task: Task, cacheItem: ListItemCache }[] = []
+    const processed: CacheUpdateItem[] = []
     const updated: Task[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
-      const res = new Task(this).initFromListItem(item, cacheUpdate, processed.map(x => x.task.id))
+      const res = new Task(this).initFromListItem(item, cacheUpdate, processed)
       if (res.valid) {
         processed.push({ task: res.task, cacheItem: item })
         if (res.isUpdated) updated.push(res.task)
@@ -71,7 +76,6 @@ export class Tasks {
         // (this is the ideal case)
         const lines = cacheUpdate.data.split('\n')
         for (const row of processed) {
-          // TODO: handle indentation
           const newLine = row.task.generateMarkdownTask()
           if (lines[row.cacheItem.position.start.line] !== newLine) {
             lines[row.cacheItem.position.start.line] = newLine
@@ -110,16 +114,29 @@ export class Tasks {
     return this.db.rows()
       .filter(row => {
         // Match INBOX type to tasks which have no type set
-        const typeMatch = !type || (type === TaskType.INBOX && !row.type) || row.type === type
+        const typeMatch = !type || row.type === type || (type === TaskType.INBOX && !row.type)
         return typeMatch && !row.orphaned && row.status !== TaskStatus.DONE
       })
-      .map(row => {
-        const task = new Task(this)
-        task.initFromRow(row)
-        return task
-      })
+      .map(row => new Task(this).initFromRow(row).task)
       // Sort by created date - oldest task first
       .sort((a, b) => a.created.localeCompare(b.created))
+  }
+
+  /**
+   * This is the main task list that a user works from, in opinionated GTD order
+   */
+  getTasklist () {
+    return this
+      // Inbox tasks
+      .getTasks(TaskType.INBOX)
+      // Projects that have no next action (i.e. no sub-tasks)
+      .concat(this.getTasks(TaskType.PROJECT)
+        .filter(project => !this.db.rows().filter(subtask => subtask.parent === project.id && subtask.status !== TaskStatus.DONE && !subtask.orphaned).length
+        ))
+      // Next Actions
+      .concat(this.getTasks(TaskType.NEXT_ACTION))
+      // Waiting-On
+      .concat(this.getTasks(TaskType.WAITING_ON))
   }
 
   /**

@@ -9,7 +9,7 @@
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
   import { moment } from '../../functions'
   import { DoTaskView, type TaskScopes } from '../task-view'
-  import { TaskEmoji, TaskType } from '../../classes/task.svelte'
+  import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
 
   interface Props {
@@ -25,7 +25,7 @@
   }: Props = $props()
 
   let state: State = $state({
-    activeIndex: 0,
+    activeId: 0,
     tasks: [],
     sidebar: {
       open: false,
@@ -36,7 +36,9 @@
     viewIsActive: false
   })
 
-  let activeTask = $derived(state.tasks[state.activeIndex])
+  let activeIndex = $derived(state.tasks.findIndex(x => x.id === state.activeId) || 0)
+  let activeTask = $derived(state.tasks[activeIndex])
+  const isWarning = (task: Task) => !task.type || task.type === TaskType.INBOX || task.type === TaskType.PROJECT
 
   $effect(() => {
     if (state.viewIsActive) {
@@ -52,12 +54,14 @@
   async function openActiveRow () {
     state.sidebar.open = true
     await tick()
-    state.sidebar.fields.text.focus()
+    state.sidebar.fields.text?.focus()
   }
 
+
   // Navigate up/down the task list
-  const listUp = () => state.activeIndex = Math.max(state.activeIndex - 1, 0)
-  const listDown = () => state.activeIndex = Math.min(state.activeIndex + 1, state.tasks.length - 1)
+  const getRowDown = () => state.tasks[Math.min(activeIndex + 1, state.tasks.length - 1)].id
+  const listUp = () => state.activeId = state.tasks[Math.max(activeIndex - 1, 0)].id
+  const listDown = () => state.activeId = getRowDown()
 
   /*
    * Hotkeys that apply to both tasklist and sidebar views
@@ -66,10 +70,10 @@
     ['Escape', [], () => state.sidebar.open = false],
     ['ArrowUp', [], listUp],
     ['ArrowDown', [], listDown],
-    ['p', ['Alt'], () => activeTask.setAs(TaskType.PROJECT)],
-    ['a', ['Alt'], () => activeTask.setAs(TaskType.NEXT_ACTION)],
-    ['s', ['Alt'], () => activeTask.setAs(TaskType.SOMEDAY)],
-    ['w', ['Alt'], () => activeTask.setAs(TaskType.WAITING_ON)]
+    ['p', ['Alt'], () => setTaskType(TaskType.PROJECT)],
+    ['a', ['Alt'], () => setTaskType(TaskType.NEXT_ACTION)],
+    ['s', ['Alt'], () => setTaskType(TaskType.SOMEDAY)],
+    ['w', ['Alt'], () => setTaskType(TaskType.WAITING_ON)]
   ])
 
   // Hotkeys for tasklist only
@@ -78,10 +82,10 @@
     ['k', [], listDown],
     ['Enter', [], openActiveRow],
     [' ', [], () => activeTask.toggle()],
-    ['p', [], () => activeTask.setAs(TaskType.PROJECT)],
-    ['a', [], () => activeTask.setAs(TaskType.NEXT_ACTION)],
-    ['s', [], () => activeTask.setAs(TaskType.SOMEDAY)],
-    ['w', [], () => activeTask.setAs(TaskType.WAITING_ON)],
+    ['p', [], () => setTaskType(TaskType.PROJECT)],
+    ['a', [], () => setTaskType(TaskType.NEXT_ACTION)],
+    ['s', [], () => setTaskType(TaskType.SOMEDAY)],
+    ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     ['n', [], () => {
       new TaskInputModal(plugin.app, null, (taskText) => {
         console.log('Task entered:', taskText)
@@ -95,19 +99,27 @@
    */
   export function refresh () {
     console.log('Refreshing task list')
-    state.tasks = plugin.tasks.getTasks(TaskType.INBOX)
-      .concat(plugin.tasks.getTasks(TaskType.NEXT_ACTION))
+    state.tasks = plugin.tasks.getTasklist()
+  }
+
+  function setTaskType (type: TaskType) {
+    // const prevType = activeTask.type
+    activeTask.setAs(type)
+    // If someone has changed the type of a task it will change position on the list,
+    // so move to the next task then refresh
+    state.activeId = getRowDown()
+    refresh()
   }
 
   export function setActive (isActive: boolean) {
     state.viewIsActive = isActive
   }
 
-  function clickRow (index: number) {
-    if (state.activeIndex === index && state.sidebar.open) {
+  function clickRow (id: number) {
+    if (state.activeId === id && state.sidebar.open) {
       state.sidebar.open = false
     } else {
-      state.activeIndex = index
+      state.activeId = id
       openActiveRow()
     }
   }
@@ -116,10 +128,17 @@
    * Display an icon in the 2nd column, for specific types only
    */
   function icon (type: TaskType) {
-    const displayedIcons = [TaskType.INBOX]
-    if (displayedIcons.includes(type)) {
+    const tooltip = {
+      [TaskType.PROJECT]: 'Project has no next action. Select the row and press N / Alt+N to create one.',
+      [TaskType.WAITING_ON]: 'Waiting On'
+    }
+    const excludedIcons = [TaskType.NEXT_ACTION]
+    if (!excludedIcons.includes(type)) {
       const key = Object.keys(TaskType).find(k => TaskType[k] === type)
-      return TaskEmoji[key] || ''
+      const image = TaskEmoji[key] || ''
+      if (image) {
+        return `<span title="${tooltip[type] || ''}">${image}</span>`
+      }
     }
     return ''
   }
@@ -130,7 +149,10 @@
   onMount(() => {
     // I have no idea why, but refresh() would never actually do anything here
     // unless I put it after a small timeout
-    setTimeout(() => { refresh() }, 200)
+    setTimeout(() => {
+      refresh()
+      state.activeId = state.tasks[0].id
+    }, 200)
   })
 
   onDestroy(() => {
@@ -140,7 +162,8 @@
 </script>
 
 <div class="gtd-view">
-    <Sidebar {state} {scopes}/>
+    <Sidebar {activeTask} {state} {scopes}/>
+    {activeIndex}
     <table class="gtd-table">
         <thead>
         <tr>
@@ -152,16 +175,16 @@
         </tr>
         </thead>
         <tbody>
-        {#each state.tasks as task, index}
+        {#each state.tasks as task}
             <tr
-                    onclick={() => clickRow(index)}
-                    class:do-task-inbox-row={(!task.type || task.type === TaskType.INBOX) && index !== state.activeIndex}
-                    class:do-task-active-row={index === state.activeIndex}
+                    onclick={() => clickRow(task.id)}
+                    class:do-task-inbox-row={(isWarning(task)) && task.id !== state.activeId}
+                    class:do-task-active-row={task.id === state.activeId}
             >
                 <td class="gtd-table-checkbox">
                     <Checkbox {task}/>
                 </td>
-                <td style="width:1.8em">{icon(task.type)}</td>
+                <td style="width:1.8em">{@html icon(task.type)}</td>
                 <td class="gtd-table-task">
                     <div class="gtd-table-clip">
                         {task.text}

@@ -1,7 +1,7 @@
 import type { Task } from '../classes/task.svelte'
 
 export interface State {
-  activeIndex: number;
+  activeId: number;
   tasks: Task[];
   sidebar: {
     open: boolean;

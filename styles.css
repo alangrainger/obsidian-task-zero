@@ -1,7 +1,7 @@
 /* Hide the block references in task lines */
 .HyperMD-task-line > .cm-blockid {
     opacity: 40%;
-    font-size: 60% !important;
+    font-size: 50% !important;
 }
 
 .gtd-view {
@@ -18,6 +18,9 @@
     padding: 4px;
     vertical-align: middle;
 }
+.gtd-table tr {
+    border-bottom: 1px solid var(--background-modifier-border);
+}
 .gtd-table input {
     vertical-align: middle;
 }
@@ -25,11 +28,11 @@
     margin: 0;
     margin-inline-end: 0;
 }
-.gtd-table tbody tr:hover {
+/*.gtd-table tbody tr:hover {
     background-color: var(--interactive-hover);
-}
+}*/
 .do-task-active-row {
-    background-color: var(--text-selection);
+    background-color: var(--text-highlight-bg);
 }
 .do-task-inbox-row {
     background-color: var(--background-modifier-error);

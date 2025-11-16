@@ -2,15 +2,15 @@
   import { slide } from 'svelte/transition'
   import type { State } from '../view-types'
   import type { TaskScopes } from '../task-view'
+  import type { Task } from '../../classes/task.svelte'
 
   interface Props {
     state: State;
     scopes: TaskScopes;
+    activeTask: Task;
   }
 
-  let { state, scopes }: Props = $props()
-
-  let activeTask = $derived(state.tasks[state.activeIndex])
+  let { state, scopes, activeTask }: Props = $props()
 
   $effect(() => {
     if (state.sidebar.open) {

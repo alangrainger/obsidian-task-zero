@@ -1,5 +1,5 @@
 import { type ListItemCache, Notice } from 'obsidian'
-import { type CacheUpdate, Tasks } from './tasks'
+import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
 import { assignExisting, moment } from '../functions'
 
 export enum TaskStatus {
@@ -44,7 +44,7 @@ export interface TaskRow {
   type: TaskType
   created: string
   orphaned: number // If the task is not present in any note
-  order: number    // The order of the task in the original note (mostly useful for project sub-tasks)
+  line: number     // The line number of the task in the original note (used for sequencing project sub-tasks)
   parent: number   // The parent task ID, if this is a sub-task
 }
 
@@ -63,7 +63,7 @@ export class Task implements TaskRow {
   orphaned = 0
   created = ''
   type = $state(TaskType.INBOX)
-  order = 0
+  line = 0
   parent = 0
 
   get DEFAULT_DATA (): TaskRow {
@@ -75,7 +75,7 @@ export class Task implements TaskRow {
       orphaned: 0,
       created: moment().format(),
       type: TaskType.INBOX,
-      order: 0,
+      line: 0,
       parent: 0
     }
   }
@@ -101,7 +101,7 @@ export class Task implements TaskRow {
       orphaned: this.orphaned,
       created: this.created,
       type: this.type,
-      order: this.order,
+      line: this.line,
       parent: this.parent
     }
   }
@@ -111,7 +111,7 @@ export class Task implements TaskRow {
     Object.keys(data).forEach(key => this[key] = data[key])
   }
 
-  completed () {
+  get isCompleted () {
     return this.status === TaskStatus.DONE
   }
 
@@ -132,7 +132,7 @@ export class Task implements TaskRow {
     return this.initResult()
   }
 
-  initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate, blacklistIds: number[]) {
+  initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate, previous: CacheUpdateItem[]) {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
     const originalLine = lines[item.position.start.line] || ''
@@ -143,7 +143,8 @@ export class Task implements TaskRow {
     }
 
     // Check if this ID has already been used on this page (duplicate ID)
-    if (parsed.id && blacklistIds.includes(parsed.id)) parsed.id = 0
+    const previousIds = previous.map(i => i.task.id)
+    if (parsed.id && previousIds.includes(parsed.id)) parsed.id = 0
 
     // Default task
     let record = this.DEFAULT_DATA
@@ -152,9 +153,26 @@ export class Task implements TaskRow {
     // Check DB for existing task
     const existing = this.tasks.db.getRow(parsed.id || 0)
 
+    // Overwrite the base record with database-data (if any), then parsed data
     record = assignExisting(record, existing, parsed)
 
-    // Are there any changes from the DB record / or is a new record?
+    // Update with the current line position
+    record.line = item.position.start.line
+
+    // Is this a sub-task?
+    if (item.parent > 0) {
+      const parentTask = previous.find(x => x.task.line === item.parent)?.task
+      if (parentTask) {
+        record.parent = parentTask.id
+        // Ensure the parent is set to Project type
+        parentTask.type = TaskType.PROJECT
+        // Check the sequence. The first sub-task should be a Next Action,
+        // and the rest should be Dependent
+        record.type = previous.find(x => x.task.parent === parentTask.id && !x.task.isCompleted) ? TaskType.DEPENDENT : TaskType.NEXT_ACTION
+      }
+    }
+
+    // Are there any changes from the DB record, and/or is a new record?
     const isUpdated = !existing || Object.keys(record).some(key => record[key] !== existing[key])
 
     const result = this.tasks.db.insertOrUpdate(record)
@@ -199,8 +217,16 @@ export class Task implements TaskRow {
   }
 
   generateMarkdownTask () {
+    // Get indentation level
+    let indent = 0
+    let parent = this.parent
+    while (parent) {
+      indent++
+      parent = this.tasks.db.getRow(parent)?.parent || 0
+    }
+
     const parts = [
-      `- [${this.status}]`,
+      '\t'.repeat(indent) + `- [${this.status}]`,
       this.getTypeSignifier(),
       this.text,
       '^' + this.tasks.blockPrefix + this.id
