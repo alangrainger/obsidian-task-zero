@@ -108,7 +108,8 @@
   }
 
   function icon (type: TaskType) {
-    return type === TaskType.INBOX ? TaskEmoji.INBOX : ''
+    const key = Object.keys(TaskType).find(k => TaskType[k] === type)
+    return TaskEmoji[key] || ''
   }
 
   // Update tasks list when tasks DB changes

@@ -1,6 +1,6 @@
 import { type ListItemCache, Notice } from 'obsidian'
 import { type CacheUpdate, Tasks } from './tasks'
-import { moment } from '../functions'
+import { assignExisting, moment } from '../functions'
 
 export enum TaskStatus {
   TODO = ' ',
@@ -17,17 +17,15 @@ export enum TaskType {
 }
 
 export enum TaskEmoji {
-  DUE = '📅',
+  INBOX = '📥',
+  NEXT_ACTION = '✅',
+  PROJECT = '🗃️',
+  WAITING_ON = '⏸️',
+  SOMEDAY = '💤',
+  DEPENDENT = '⛓️',
   CREATED = '➕',
   SCHEDULED = '⏳',
-  PROJECT = '🗃️',
-  INBOX = '📥',
-  SOMEDAY = '💤'
-}
-
-export enum TaskTags {
-  PROJECT = '#project',
-  SOMEDAY = '#someday'
+  DUE = '📅',
 }
 
 export interface TaskRow {
@@ -45,21 +43,9 @@ export interface TaskRow {
   type: TaskType
 }
 
-const DEFAULT_ROW: TaskRow = {
-  id: 0,
-  status: ' ',
-  text: '',
-  path: '',
-  orphaned: 0,
-  created: '',
-  type: TaskType.INBOX
-}
-
-interface MarkdownTaskElements {
-  id?: number,
-  status: string,
-  text: string,
-  type?: TaskType
+interface MarkdownTaskElements extends Partial<TaskRow> {
+  status: string
+  text: string
 }
 
 export class Task {
@@ -73,12 +59,24 @@ export class Task {
   created = ''
   type = $state(TaskType.INBOX)
 
+  get DEFAULT_DATA (): TaskRow {
+    return {
+      id: 0,
+      status: ' ',
+      text: '',
+      path: '',
+      orphaned: 0,
+      created: moment().format(),
+      type: TaskType.INBOX
+    }
+  }
+
   constructor (tasks: Tasks) {
     this.tasks = tasks
   }
 
   reset () {
-    this.setData(DEFAULT_ROW)
+    this.setData(this.DEFAULT_DATA)
   }
 
   valid () {
@@ -118,7 +116,7 @@ export class Task {
 
   initFromRow (row: TaskRow) {
     // Populate any missing data from DEFAULT_ROW
-    const data = Object.assign({}, DEFAULT_ROW, row)
+    const data = Object.assign({}, this.DEFAULT_DATA, row)
     this.setData(data)
     return this
   }
@@ -136,21 +134,14 @@ export class Task {
     // Check if this ID has already been used on this page (duplicate ID)
     if (parsed.id && blacklistIds.includes(parsed.id)) parsed.id = 0
 
-    const record = Object.assign({}, DEFAULT_ROW)
+    // Default task
+    let record = this.DEFAULT_DATA
+    record.path = cacheUpdate.file.path
 
     // Check DB for existing task
     const existing = this.tasks.db.getRow(parsed.id || 0)
-    if (parsed.id && existing) Object.assign(record, existing)
 
-    // Update the record from the parsed data
-    Object.assign(record, {
-      status: parsed.status,
-      text: parsed.text,
-      path: cacheUpdate.file.path,
-      orphaned: 0,
-      type: parsed.type || existing?.type || TaskType.INBOX,
-      created: record.created || moment().format()
-    })
+    record = assignExisting(record, existing, parsed)
 
     // Are there any changes from the DB record / or is a new record?
     const isUpdated = !existing || Object.keys(record).some(key => record[key] !== existing[key])
@@ -259,12 +250,12 @@ function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskEle
 
   // Is project?
   let isProject
-  [isProject, text] = detectEmojiOrTag(text, TaskEmoji.PROJECT, TaskTags.PROJECT)
+  [isProject, text] = detectEmojiOrTag(text, TaskEmoji.PROJECT, TaskType.PROJECT)
   if (isProject) taskType = TaskType.PROJECT
 
   // Is someday?
   let isSomeday
-  [isSomeday, text] = detectEmojiOrTag(text, TaskEmoji.SOMEDAY, TaskTags.SOMEDAY)
+  [isSomeday, text] = detectEmojiOrTag(text, TaskEmoji.SOMEDAY, TaskType.SOMEDAY)
   if (isSomeday) taskType = TaskType.SOMEDAY
 
   if (status && text) {
@@ -279,10 +270,10 @@ function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskEle
   }
 }
 
-function detectEmojiOrTag (text: string, emoji: TaskEmoji, tag: TaskTags): [string | undefined, string] {
+function detectEmojiOrTag (text: string, emoji: TaskEmoji, type: TaskType): [string | undefined, string] {
   let hasEmoji
   [hasEmoji, text] = getAndRemoveMatch(text, new RegExp(`\\s+(${emoji})\\s+`))
   let hasTag
-  [hasTag, text] = getAndRemoveMatch(text, new RegExp(`\\s+(${tag})\\s+`))
+  [hasTag, text] = getAndRemoveMatch(text, new RegExp(`\\s+(#${type})\\s+`))
   return [hasEmoji || hasTag, text]
 }
