@@ -25,49 +25,58 @@ export enum TaskEmoji {
   DEPENDENT = '⛓️',
   CREATED = '➕',
   SCHEDULED = '⏳',
-  DUE = '📅',
+  DUE = '📅'
+}
+
+type TaskInitResult = {
+  task: Task
+  isUpdated: boolean
+  valid: boolean
 }
 
 export interface TaskRow {
   [key: string]: any
 
   id: number
-  status: string
+  status: TaskStatus
   text: string
   path: string
-  /**
-   * If the task is not present in any note
-   */
-  orphaned: number
-  created: string
   type: TaskType
+  created: string
+  orphaned: number // If the task is not present in any note
+  order: number    // The order of the task in the original note (mostly useful for project sub-tasks)
+  parent: number   // The parent task ID, if this is a sub-task
 }
 
 interface MarkdownTaskElements extends Partial<TaskRow> {
-  status: string
+  status: TaskStatus
   text: string
 }
 
-export class Task {
+export class Task implements TaskRow {
   tasks: Tasks
 
   id = 0
-  status = $state(' ')
+  status = $state(TaskStatus.TODO)
   text = $state('')
   path = ''
   orphaned = 0
   created = ''
   type = $state(TaskType.INBOX)
+  order = 0
+  parent = 0
 
   get DEFAULT_DATA (): TaskRow {
     return {
       id: 0,
-      status: ' ',
+      status: TaskStatus.TODO,
       text: '',
       path: '',
       orphaned: 0,
       created: moment().format(),
-      type: TaskType.INBOX
+      type: TaskType.INBOX,
+      order: 0,
+      parent: 0
     }
   }
 
@@ -91,7 +100,9 @@ export class Task {
       path: this.path,
       orphaned: this.orphaned,
       created: this.created,
-      type: this.type
+      type: this.type,
+      order: this.order,
+      parent: this.parent
     }
   }
 
@@ -111,14 +122,14 @@ export class Task {
     } else {
       this.reset()
     }
-    return this
+    return this.initResult()
   }
 
   initFromRow (row: TaskRow) {
-    // Populate any missing data from DEFAULT_ROW
-    const data = Object.assign({}, this.DEFAULT_DATA, row)
+    // Populate any missing data from DEFAULT_DATA
+    const data = assignExisting(this.DEFAULT_DATA, row)
     this.setData(data)
-    return this
+    return this.initResult()
   }
 
   initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate, blacklistIds: number[]) {
@@ -148,8 +159,7 @@ export class Task {
 
     const result = this.tasks.db.insertOrUpdate(record)
     if (!result) {
-      // Unable to insert data - reset to default data
-      // Which will show task.valid() === false
+      // Unable to insert data. Reset to default data, which will show task.valid() === false
       this.reset()
       return this.initResult()
     } else {
@@ -158,7 +168,10 @@ export class Task {
     return this.initResult(isUpdated)
   }
 
-  initResult (isUpdated = false) {
+  /**
+   * This is the standard result format from all the 'init' methods
+   */
+  initResult (isUpdated = false): TaskInitResult {
     return {
       task: this,
       isUpdated,
@@ -261,7 +274,7 @@ function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskEle
   if (status && text) {
     return {
       id,
-      status,
+      status: status as TaskStatus,
       text: text.trim(),
       type: taskType
     }

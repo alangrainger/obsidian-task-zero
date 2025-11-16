@@ -2,7 +2,6 @@
   import { slide } from 'svelte/transition'
   import type { State } from '../view-types'
   import type { TaskScopes } from '../task-view'
-  import { Notice } from 'obsidian'
 
   interface Props {
     state: State;

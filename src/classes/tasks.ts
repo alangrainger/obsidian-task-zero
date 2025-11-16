@@ -135,7 +135,7 @@ export class Tasks {
     // Split queue into files
     const grouped: any = []
     this.noteUpdateQueue.forEach(id => {
-      const task = new Task(this).initFromId(id)
+      const task = new Task(this).initFromId(id).task
       if (task.valid()) {
         if (!grouped[task.path]) grouped[task.path] = []
         grouped[task.path].push(task)

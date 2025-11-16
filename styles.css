@@ -29,7 +29,7 @@
     background-color: var(--interactive-hover);
 }
 .do-task-active-row {
-    background-color: var(--background-modifier-active-hover);
+    background-color: var(--text-selection);
 }
 .do-task-inbox-row {
     background-color: var(--background-modifier-error);

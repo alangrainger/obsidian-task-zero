@@ -10,6 +10,7 @@
   import { moment } from '../../functions'
   import { DoTaskView, type TaskScopes } from '../task-view'
   import { TaskEmoji, TaskType } from '../../classes/task.svelte'
+  import { TaskInputModal } from '../task-input-modal'
 
   interface Props {
     view: DoTaskView
@@ -66,7 +67,7 @@
     ['ArrowUp', [], listUp],
     ['ArrowDown', [], listDown],
     ['p', ['Alt'], () => activeTask.setAs(TaskType.PROJECT)],
-    ['n', ['Alt'], () => activeTask.setAs(TaskType.NEXT_ACTION)],
+    ['a', ['Alt'], () => activeTask.setAs(TaskType.NEXT_ACTION)],
     ['s', ['Alt'], () => activeTask.setAs(TaskType.SOMEDAY)],
     ['w', ['Alt'], () => activeTask.setAs(TaskType.WAITING_ON)]
   ])
@@ -78,9 +79,15 @@
     ['Enter', [], openActiveRow],
     [' ', [], () => activeTask.toggle()],
     ['p', [], () => activeTask.setAs(TaskType.PROJECT)],
-    ['n', [], () => activeTask.setAs(TaskType.NEXT_ACTION)],
+    ['a', [], () => activeTask.setAs(TaskType.NEXT_ACTION)],
     ['s', [], () => activeTask.setAs(TaskType.SOMEDAY)],
-    ['w', [], () => activeTask.setAs(TaskType.WAITING_ON)]
+    ['w', [], () => activeTask.setAs(TaskType.WAITING_ON)],
+    ['n', [], () => {
+      new TaskInputModal(plugin.app, null, (taskText) => {
+        console.log('Task entered:', taskText)
+        // Handle the task text here
+      }).open()
+    }]
   ])
 
   /**
@@ -90,8 +97,6 @@
     console.log('Refreshing task list')
     state.tasks = plugin.tasks.getTasks(TaskType.INBOX)
       .concat(plugin.tasks.getTasks(TaskType.NEXT_ACTION))
-      .concat(plugin.tasks.getTasks(TaskType.PROJECT))
-      .concat(plugin.tasks.getTasks(TaskType.SOMEDAY))
   }
 
   export function setActive (isActive: boolean) {
@@ -107,9 +112,16 @@
     }
   }
 
+  /**
+   * Display an icon in the 2nd column, for specific types only
+   */
   function icon (type: TaskType) {
-    const key = Object.keys(TaskType).find(k => TaskType[k] === type)
-    return TaskEmoji[key] || ''
+    const displayedIcons = [TaskType.INBOX]
+    if (displayedIcons.includes(type)) {
+      const key = Object.keys(TaskType).find(k => TaskType[k] === type)
+      return TaskEmoji[key] || ''
+    }
+    return ''
   }
 
   // Update tasks list when tasks DB changes
