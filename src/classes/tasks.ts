@@ -4,6 +4,7 @@ import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } fr
 import { Table } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
 import { debug, moment } from '../functions'
+import { TaskInputModal } from '../views/task-input-modal'
 
 export interface CacheUpdate {
   file: TFile
@@ -187,5 +188,26 @@ export class Tasks {
         return data
       })
     }
+  }
+
+  async addTaskToDefaultNote (task: Task) {
+    if (!task.valid()) return
+    let path = this.plugin.settings.defaultNote
+    if (!path.endsWith('.md')) path += '.md'
+    let file = this.getTFileFromPath(path)
+    if (!file) {
+      // File doesn't exist, so create it
+      file = await this.app.vault.create(path, '')
+    }
+    await this.app.vault.append(file, task.generateMarkdownTask() + '\n')
+  }
+
+  openQuickCpature () {
+    new TaskInputModal(this.plugin, null, taskText => {
+      if (taskText.trim().length) {
+        const task = new Task(this).initFromText(taskText).task
+        this.addTaskToDefaultNote(task).then()
+      }
+    }).open()
   }
 }

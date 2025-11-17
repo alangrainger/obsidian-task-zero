@@ -1,6 +1,7 @@
 import { type ListItemCache, Notice } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
 import { assignExisting, moment } from '../functions'
+import { MarkdownTaskParser } from './markdown-task-parser'
 
 export enum TaskStatus {
   TODO = ' ',
@@ -17,6 +18,7 @@ export enum TaskType {
 }
 
 export enum TaskEmoji {
+  NONE = '',
   INBOX = '📥',
   NEXT_ACTION = '➡️',
   PROJECT = '🗃️',
@@ -48,11 +50,6 @@ export interface TaskRow {
   parent: number   // The parent task ID, if this is a sub-task
 }
 
-interface MarkdownTaskElements extends Partial<TaskRow> {
-  status: TaskStatus
-  text: string
-}
-
 export class Task implements TaskRow {
   tasks: Tasks
 
@@ -65,6 +62,8 @@ export class Task implements TaskRow {
   type = $state(TaskType.INBOX)
   line = 0
   parent = 0
+
+  markdownTaskParser: MarkdownTaskParser
 
   get DEFAULT_DATA (): TaskRow {
     return {
@@ -82,6 +81,7 @@ export class Task implements TaskRow {
 
   constructor (tasks: Tasks) {
     this.tasks = tasks
+    this.markdownTaskParser = new MarkdownTaskParser(tasks.plugin)
   }
 
   reset () {
@@ -122,24 +122,24 @@ export class Task implements TaskRow {
     } else {
       this.reset()
     }
-    return this.initResult()
+    return this.resultFromInit()
   }
 
   initFromRow (row: TaskRow) {
     // Populate any missing data from DEFAULT_DATA
     const data = assignExisting(this.DEFAULT_DATA, row)
     this.setData(data)
-    return this.initResult()
+    return this.resultFromInit()
   }
 
   initFromListItem (item: ListItemCache, cacheUpdate: CacheUpdate, previous: CacheUpdateItem[]) {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
     const originalLine = lines[item.position.start.line] || ''
-    const parsed = parseMarkdownTaskString(originalLine, this.tasks.blockPrefix)
+    const parsed = this.markdownTaskParser.processTaskLine(originalLine)
     if (!parsed) {
       // Not able to find a task in this line
-      return this.initResult()
+      return this.resultFromInit()
     }
 
     // Check if this ID has already been used on this page (duplicate ID)
@@ -184,17 +184,35 @@ export class Task implements TaskRow {
     if (!result) {
       // Unable to insert data. Reset to default data, which will show task.valid() === false
       this.reset()
-      return this.initResult()
+      return this.resultFromInit()
     } else {
       this.setData(result)
     }
-    return this.initResult(isUpdated)
+    return this.resultFromInit(isUpdated)
+  }
+
+  /**
+   * Create a new task from arbitrary text. It will parse out task elements,
+   * but will always create a new task as a block ID is not expected here.
+   */
+  initFromText (text: string) {
+    const parsed = this.markdownTaskParser.processText(text)
+    const record = assignExisting(this.DEFAULT_DATA, parsed)
+    const result = this.tasks.db.insertOrUpdate(record)
+    if (!result) {
+      // Unable to insert data. Reset to default data, which will show task.valid() === false
+      this.reset()
+      return this.resultFromInit()
+    } else {
+      this.setData(result)
+    }
+    return this.resultFromInit()
   }
 
   /**
    * This is the standard result format from all the 'init' methods
    */
-  initResult (isUpdated = false): TaskInitResult {
+  resultFromInit (isUpdated = false): TaskInitResult {
     return {
       task: this,
       isUpdated,
@@ -216,19 +234,16 @@ export class Task implements TaskRow {
   }
 
   getTypeSignifier () {
-    if (this.isCompleted) return '' // No need for signifier cluttering up the view for completed tasks
+    if (this.isCompleted) return TaskEmoji.NONE // No need for signifier cluttering up the view for completed tasks
 
-    const signifiers = [
-      TaskType.PROJECT,
-      TaskType.SOMEDAY,
-      TaskType.NEXT_ACTION,
-      TaskType.DEPENDENT
-    ]
+    const signifiers = [TaskType.PROJECT, TaskType.SOMEDAY, TaskType.WAITING_ON]
+    if (process.env.NODE_ENV === 'development') signifiers.push(TaskType.INBOX, TaskType.NEXT_ACTION, TaskType.DEPENDENT)
+
     if (signifiers.includes(this.type)) {
-      const key = Object.keys(TaskType).find(key => TaskType[key as keyof typeof TaskType] === this.type) || '';
-      return TaskEmoji[key as keyof typeof TaskEmoji] || ''
+      const key = Object.keys(TaskType).find(key => TaskType[key as keyof typeof TaskType] === this.type) || ''
+      return TaskEmoji[key as keyof typeof TaskEmoji] || TaskEmoji.NONE
     }
-    return ''
+    return TaskEmoji.NONE
   }
 
   generateMarkdownTask () {
@@ -308,7 +323,7 @@ export class Task implements TaskRow {
    * to a project if not already the case.
    * It will add the subtask at the end of any existing subtasks.
    */
-  async createSubtask (newTaskText: string) {
+  async addSubtask (newTaskText: string) {
     // Get the position in the note to insert the new task
     const descendants = this.descendants
     const line = (descendants.length ? descendants[descendants.length - 1].line : this.line) + 1
@@ -329,75 +344,4 @@ export class Task implements TaskRow {
       })
     }
   }
-}
-
-/**
- * Find a matching element via regex, and remove
- * the entire search query from the original string
- */
-function getAndRemoveMatch (text: string, regex: RegExp): [string | undefined, string] {
-  let foundText
-  let matching = true
-  // Remove multiple occurrences if they exist
-  while (matching) {
-    const match = text.match(regex)
-    if (match) {
-      foundText = match[1]
-      text = text.replace(regex, ' ')
-    } else {
-      matching = false
-    }
-  }
-  return [foundText, text]
-}
-
-/**
- * Parse a markdown task line into its component elements
- */
-function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskElements | false {
-  let taskType
-
-  // Get task ID
-  let id
-  [id, text] = getAndRemoveMatch(text, new RegExp(`\\^${prefix}(\\d+)\\s*$`))
-  id = id ? parseInt(id, 10) : undefined
-
-  // Get status
-  let status
-  [status, text] = getAndRemoveMatch(text, /^\s*-\s+\[(.)]\s+/)
-
-  // Is project?
-  let isProject
-  [isProject, text] = detectEmojiOrTag(text, TaskEmoji.PROJECT, TaskType.PROJECT)
-  if (isProject) taskType = TaskType.PROJECT
-
-  // Is someday?
-  let isSomeday
-  [isSomeday, text] = detectEmojiOrTag(text, TaskEmoji.SOMEDAY, TaskType.SOMEDAY)
-  if (isSomeday) taskType = TaskType.SOMEDAY
-
-  // Remove other icons which shouldn't be in the final task line
-  const remove = [TaskEmoji.NEXT_ACTION, TaskEmoji.DEPENDENT]
-  remove.forEach(emoji => {
-    text = text.replace(emoji, ' ')
-  })
-
-  if (status && text) {
-    return {
-      id,
-      status: status as TaskStatus,
-      text: text.trim(),
-      type: taskType
-    }
-  } else {
-    return false
-  }
-}
-
-function detectEmojiOrTag (text: string, emoji: TaskEmoji, type: TaskType): [string | undefined, string] {
-  let hasEmoji
-  [hasEmoji, text] = getAndRemoveMatch(text, new RegExp(`\\s+(${emoji})\\s+`))
-  let hasTag
-  [hasTag, text] = getAndRemoveMatch(text, new RegExp(`\\s+(#${type})\\s+`))
-  return [hasEmoji || hasTag, text]
 }

@@ -1,19 +1,27 @@
-import { App, Modal, Setting } from 'obsidian'
-import type { Task } from '../classes/task.svelte'
+import { Modal, Setting } from 'obsidian'
+import { type Task, TaskEmoji } from '../classes/task.svelte'
+import type DoPlugin from '../main'
 
 export class TaskInputModal extends Modal {
+  plugin: DoPlugin
   project: Task | null
   taskText = ''
   callback: (taskText: string) => void
 
-  constructor (app: App, project: Task | null, callback: (taskText: string) => void) {
-    super(app)
+  constructor (plugin: DoPlugin, project: Task | null, callback: (taskText: string) => void) {
+    super(plugin.app)
+    this.plugin = plugin
     this.project = project
     this.callback = callback
   }
 
   onOpen () {
     const { contentEl } = this
+
+    new Setting(contentEl)
+      .setHeading()
+      .setName(this.project ? `Add subtask to ${TaskEmoji.PROJECT} ${this.project.text}` : 'Capture new task')
+      .setDesc(this.project ? 'Project has no Next Actions - time to add one.' : `Adding task to the default note: "${this.plugin.settings.defaultNote}"`)
 
     new Setting(contentEl)
       .setName('Task text')

@@ -57,11 +57,10 @@
     state.sidebar.fields.text?.focus()
   }
 
-
   // Navigate up/down the task list
-  const getRowDown = () => state.tasks[Math.min(activeIndex + 1, state.tasks.length - 1)].id
+  const getRowDown = () => state.tasks[Math.min(activeIndex + 1, state.tasks.length - 1)]
   const listUp = () => state.activeId = state.tasks[Math.max(activeIndex - 1, 0)].id
-  const listDown = () => state.activeId = getRowDown()
+  const listDown = () => state.activeId = getRowDown().id
 
   /*
    * Hotkeys that apply to both tasklist and sidebar views
@@ -87,10 +86,21 @@
     ['s', [], () => setTaskType(TaskType.SOMEDAY)],
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     ['n', [], () => {
-      new TaskInputModal(plugin.app, null, (taskText) => {
-        if (activeTask.type === TaskType.PROJECT) {
-          console.log('Creating subtask', taskText)
-          activeTask.createSubtask(taskText).then()
+      const project = activeTask.type === TaskType.PROJECT ? activeTask : null
+      new TaskInputModal(plugin, project, (taskText) => {
+        if (!taskText.trim().length) {
+          return
+        } else if (project) {
+          // If this is a project line, add the task as a subtask of that project
+          const nextTaskInList = getRowDown()
+          activeTask.addSubtask(taskText).then()
+          // Remove the project from the tasklist since it now has a next action
+          state.tasks.splice(activeIndex, 1)
+          state.activeId = nextTaskInList.id
+        } else {
+          // Otherwise, add the task to the default note
+          const task = new Task(plugin.tasks).initFromText(taskText).task
+          plugin.tasks.addTaskToDefaultNote(task).then()
         }
       }).open()
     }]
@@ -109,7 +119,7 @@
     activeTask.setAs(type)
     // If someone has changed the type of a task it will change position on the list,
     // so move to the next task then refresh
-    state.activeId = getRowDown()
+    state.activeId = getRowDown().id
     refresh()
   }
 

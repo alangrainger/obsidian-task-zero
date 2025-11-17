@@ -28,6 +28,12 @@ export default class DoPlugin extends Plugin {
       this.activateView()
     })
 
+    this.addCommand({
+      id: 'quick-capture',
+      name: 'Add new task (quick capture)',
+      callback: () => this.tasks.openQuickCpature()
+    })
+
     // Watch for metadata cache changes, but only start processing after no changes in N seconds
     this.registerEvent(this.app.metadataCache.on('changed', (file, data, cache) => {
       clearTimeout(this.updateTimer[file.path])
