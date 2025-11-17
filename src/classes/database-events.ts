@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { debug } from '../functions'
 
 export enum DatabaseEvent {
   TasksExternalChange = 'do:tasks-external-change',
@@ -20,7 +21,7 @@ class DatabaseEventEmitter extends EventEmitter {
   }
 
   emit<T> (event: DatabaseEvent) {
-    console.log('Event: ' + event)
+    debug('Event: ' + event)
     return super.emit(event)
   }
 }

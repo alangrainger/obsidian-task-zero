@@ -1,6 +1,7 @@
 import { App, debounce } from 'obsidian'
 import { TaskChangeEvent } from './tasks'
 import moment from 'moment'
+import { debug } from '../functions'
 
 const PLUGIN_ID = require('../../manifest.json').id
 
@@ -71,7 +72,7 @@ export class Table<R extends BaseRow> {
 
   insert (data: R) {
     if (data.id) {
-      console.log('Insert should not include a row ID', data)
+      debug('Insert should not include a row ID', data)
       return null
     } else {
       data.id = this.getAutoincrementId()
@@ -123,7 +124,7 @@ export class Table<R extends BaseRow> {
     const index = this.data.rows.findIndex(x => x.id === id)
     if (index !== -1) {
       this.data.rows.splice(index, 1)
-      console.log('Deleted task ' + id)
+      debug('Deleted task ' + id)
       this.saveDb()
     }
   }
@@ -147,16 +148,16 @@ export class Table<R extends BaseRow> {
       this.initialised = true
     } catch (e) {
       // nothing
-      console.log('Database not correctly initiliased')
+      debug('Database not correctly initialised')
     }
   }
 
   async write () {
     if (!this.initialised) {
-      console.log('Database not correctly initiliased')
+      debug('Database not correctly initialised')
       return
     }
-    console.log('Saving DB file ' + this.filename)
+    debug('Saving DB file ' + this.filename)
     const data = JSON.stringify(this.data, null, 2)
     await this.app.vault.adapter.write(this.filename, data)
   }

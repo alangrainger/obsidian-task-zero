@@ -33,24 +33,34 @@ const taskElements: TaskElement[] = [
     name: 'Due date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
     emoji: TaskEmoji.DUE
+  },
+  {
+    key: 'completedDisplay',
+    name: 'Completed date',
+    dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
+    emoji: TaskEmoji.COMPLETED
   }
 ]
 
 export interface DoPluginSettings {
   [key: string]: any
   defaultNote: string;
+  archiveNote: string;
   taskBlockPrefix: string;
   createdDisplay: DisplayOption;
   scheduledDisplay: DisplayOption;
   dueDisplay: DisplayOption;
+  completedDisplay: DisplayOption;
 }
 
 export const DEFAULT_SETTINGS: DoPluginSettings = {
-  defaultNote: 'Done Tasks quick add',
+  defaultNote: 'Next Action quick add',
+  archiveNote: 'Next Action completed tasks',
   taskBlockPrefix: 'do',
   createdDisplay: DisplayOption.NONE,
   scheduledDisplay: DisplayOption.EMOJI,
-  dueDisplay: DisplayOption.EMOJI
+  dueDisplay: DisplayOption.EMOJI,
+  completedDisplay: DisplayOption.EMOJI
 }
 
 export class DoSettingTab extends PluginSettingTab {
@@ -73,6 +83,16 @@ export class DoSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.defaultNote)
         .onChange(async (value) => {
           this.plugin.settings.defaultNote = value || DEFAULT_SETTINGS.defaultNote
+          await this.plugin.saveSettings()
+        }))
+
+    new Setting(containerEl)
+      .setName('Archived task note')
+      .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
+      .addText(text => text
+        .setValue(this.plugin.settings.archiveNote)
+        .onChange(async (value) => {
+          this.plugin.settings.archiveNote = value || DEFAULT_SETTINGS.archiveNote
           await this.plugin.saveSettings()
         }))
 

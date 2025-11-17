@@ -1,12 +1,12 @@
-import { Plugin, type WorkspaceLeaf } from 'obsidian'
+import { debounce, MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS, type DoPluginSettings, DoSettingTab } from './settings'
-import { Tasks } from './classes/tasks'
+import { type CacheUpdate, Tasks } from './classes/tasks'
 import { DO_TASK_VIEW_TYPE, DoTaskView } from './views/task-view'
+import { getOrCreateFile } from './functions'
 
 export default class DoPlugin extends Plugin {
   tasks!: Tasks
   settings!: DoPluginSettings
-  updateTimer: { [key: string]: NodeJS.Timeout } = {}
   view!: DoTaskView
 
   async onload () {
@@ -28,19 +28,48 @@ export default class DoPlugin extends Plugin {
       this.activateView()
     })
 
+    // Quick capture new task
     this.addCommand({
       id: 'quick-capture',
       name: 'Add new task (quick capture)',
-      callback: () => this.tasks.openQuickCpature()
+      callback: () => this.tasks.openQuickCapture()
+    })
+
+    // Archive completed tasks from the active note
+    this.addCommand({
+      id: 'archive-completed',
+      name: 'Archive completed tasks from the active note',
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+        if (checking) {
+          return !!view?.file
+        } else if (view?.file) {
+          (async () => {
+            let completedTaskString = ''
+            // Remove tasks from original file
+            await this.app.vault.process(view.file as TFile, data => {
+              const taskRegex = /(?<=(^|\n))[ \t]*- \[x].*?(\n|$)/sg
+              const completedTasks = data.match(taskRegex)?.map(line => line.trim()).join('\n')
+              if (completedTasks) {
+                completedTaskString = completedTasks
+                data = data.replace(taskRegex, '')
+              }
+              return data
+            })
+            // Add tasks to the archive file
+            const file = await getOrCreateFile(this.app, this.settings.archiveNote)
+            await this.app.vault.append(file, completedTaskString.trim() + '\n')
+          })()
+        }
+      }
     })
 
     // Watch for metadata cache changes, but only start processing after no changes in N seconds
+    const cacheChangeDebounce = debounce((cacheUpdate: CacheUpdate) => {
+      this.tasks.processTasksFromCacheUpdate(cacheUpdate)
+    }, 4000, true)
     this.registerEvent(this.app.metadataCache.on('changed', (file, data, cache) => {
-      clearTimeout(this.updateTimer[file.path])
-      this.updateTimer[file.path] = setTimeout(() => {
-        console.log('Processing ' + file.basename)
-        this.tasks.processTasksFromCacheUpdate({ file, data, cache })
-      }, 3000)
+      cacheChangeDebounce({ file, data, cache })
     }))
 
     // Notify the view when it is visible

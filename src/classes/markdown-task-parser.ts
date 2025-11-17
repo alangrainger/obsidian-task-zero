@@ -19,6 +19,7 @@ export class MarkdownTaskParser {
       someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})\\s+`),
       due: /\s+📅\s*(\d{4}-\d{2}-\d{2})\s+/,
       scheduled: /\s+⏳\s*(\d{4}-\d{2}-\d{2})\s+/,
+      completed: /\s+✅\s*(\d{4}-\d{2}-\d{2})\s+/
     } as const
   }
 
@@ -37,6 +38,7 @@ export class MarkdownTaskParser {
     const isSomeday = this.isSomeday()
     const due = this.getDue()
     const scheduled = this.getScheduled()
+    const completed = this.getCompleted()
 
     // Remove other icons which shouldn't be in the final task text
     // This will leave the final task text === this.taskLine.trim()
@@ -53,6 +55,7 @@ export class MarkdownTaskParser {
       type: isSomeday ? TaskType.SOMEDAY : isProject ? TaskType.PROJECT : undefined,
       due,
       scheduled,
+      completed,
       text: this.taskLine.trim()
     }
   }
@@ -114,5 +117,9 @@ export class MarkdownTaskParser {
 
   getScheduled () {
     return this.getAndRemoveMatch(this.regex.scheduled)
+  }
+
+  getCompleted () {
+    return this.getAndRemoveMatch(this.regex.completed)
   }
 }

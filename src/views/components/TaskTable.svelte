@@ -7,7 +7,7 @@
   import type DoPlugin from '../../main'
   import type { State } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
-  import { fromNow } from '../../functions'
+  import { debug, fromNow } from '../../functions'
   import { DoTaskView, type TaskScopes } from '../task-view'
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
@@ -42,11 +42,9 @@
 
   $effect(() => {
     if (state.viewIsActive) {
-      console.log('view is active')
       scopes.tasklist.enable()
       refresh() // Refresh the task list when the view becomes active
     } else {
-      console.log('view is NOT active')
       view.disableAllScopes()
     }
   })
@@ -110,7 +108,7 @@
    * Refresh the list of tasks
    */
   export function refresh () {
-    console.log('Refreshing task list')
+    debug('Refreshing task list')
     state.tasks = plugin.tasks.getTasklist()
   }
 

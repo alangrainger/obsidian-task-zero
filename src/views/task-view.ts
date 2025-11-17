@@ -50,7 +50,6 @@ export class DoTaskView extends ItemView {
   }
 
   async onClose () {
-    console.log('unmounting')
     this.disableAllScopes()
     return unmount(Table)
   }

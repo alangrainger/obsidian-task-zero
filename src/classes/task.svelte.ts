@@ -1,6 +1,6 @@
-import { type ListItemCache, Notice } from 'obsidian'
+import { type ListItemCache } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
-import { assignExisting } from '../functions'
+import { assignExisting, debug, getTFileFromPath } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
 import moment from 'moment'
 import { DisplayOption } from '../settings'
@@ -29,12 +29,13 @@ export enum TaskEmoji {
   DEPENDENT = '⛓️',
   CREATED = '➕',
   SCHEDULED = '⏳',
-  DUE = '📅'
+  DUE = '📅',
+  COMPLETED = '✅'
 }
 
 type TaskInitResult = {
   task: Task
-  isUpdated: boolean
+  hasChanges: boolean
   valid: boolean
 }
 
@@ -52,9 +53,12 @@ export interface TaskRow {
   parent: number   // The parent task ID, if this is a sub-task
   due: string
   scheduled: string
+  completed: string
 }
 
 export class Task implements TaskRow {
+  [key: string]: any
+
   tasks: Tasks
 
   id = 0
@@ -68,6 +72,7 @@ export class Task implements TaskRow {
   parent = 0
   due = ''
   scheduled = ''
+  completed = ''
 
   markdownTaskParser: MarkdownTaskParser
 
@@ -83,7 +88,8 @@ export class Task implements TaskRow {
       line: 0,
       parent: 0,
       due: '',
-      scheduled: ''
+      scheduled: '',
+      completed: ''
     }
   }
 
@@ -112,12 +118,12 @@ export class Task implements TaskRow {
       line: this.line,
       parent: this.parent,
       due: this.due,
-      scheduled: this.scheduled
+      scheduled: this.scheduled,
+      completed: this.completed
     }
   }
 
   setData (data: TaskRow) {
-    // @ts-ignore
     Object.keys(data).forEach(key => this[key] = data[key])
   }
 
@@ -166,7 +172,7 @@ export class Task implements TaskRow {
     const parsed = this.markdownTaskParser.processTaskLine(originalLine)
     if (!parsed) {
       // Not able to find a task in this line
-      return this.resultFromInit()
+      return this.resultFromInit(false)
     }
 
     // Check if this ID has already been used on this page (duplicate ID)
@@ -182,6 +188,22 @@ export class Task implements TaskRow {
 
     // Overwrite the base record with database-data (if any), then parsed data
     record = assignExisting(record, existing, parsed)
+
+    // If the task is completed AND the database task is also completed,
+    // return without making any changes. This is so that completed tasks
+    // remain truthful to their state as when they were originally ticked off.
+    // This allows completed tasks to be archived to a "Completed task" note
+    // without causing path etc to update.
+    if (parsed.status === TaskStatus.DONE && existing?.status === TaskStatus.DONE) {
+      this.setData(record)
+      return this.resultFromInit(false)
+    }
+
+    // If the task is completed and the database task is not completed,
+    // set the completed date.
+    if (parsed.status === TaskStatus.DONE && existing?.status !== TaskStatus.DONE) {
+      record.completed = moment().format()
+    }
 
     // Update with the current line position
     record.line = item.position.start.line
@@ -203,20 +225,26 @@ export class Task implements TaskRow {
           .map(x => x.id)
           .includes(prev.task.parent) && !prev.task.isCompleted) ? TaskType.DEPENDENT : TaskType.NEXT_ACTION
       }
+    } else {
+      // The note is the source-of-truth, so if the task has been re-ordered and there's
+      // no longer a parent, we need to update the DB to match
+      record.parent = 0
+      // If it was previously a dependent task in a project, send it back to the inbox to be classified
+      if (record.type === TaskType.DEPENDENT) record.type = TaskType.INBOX
     }
 
     // Are there any changes from the DB record, and/or is a new record?
-    const isUpdated = !existing || Object.keys(record).some(key => record[key] !== existing[key])
+    const hasChanges = !existing || Object.keys(record).some(key => record[key] !== existing[key])
 
     const result = this.tasks.db.insertOrUpdate(record)
     if (!result) {
       // Unable to insert data. Reset to default data, which will show task.valid() === false
       this.reset()
-      return this.resultFromInit()
+      return this.resultFromInit(false)
     } else {
       this.setData(result)
     }
-    return this.resultFromInit(isUpdated)
+    return this.resultFromInit(hasChanges)
   }
 
   /**
@@ -240,10 +268,10 @@ export class Task implements TaskRow {
   /**
    * This is the standard result format from all the 'init' methods
    */
-  resultFromInit (isUpdated = false): TaskInitResult {
+  resultFromInit (hasChanges = false): TaskInitResult {
     return {
       task: this,
-      isUpdated,
+      hasChanges,
       valid: this.valid()
     }
   }
@@ -255,8 +283,7 @@ export class Task implements TaskRow {
 
   setAs (type: TaskType) {
     if (type === this.type) return // no change
-
-    new Notice('Changing task type to ' + type)
+    // new Notice('Changing task type to ' + type)
     this.type = type
     this.update()
   }
@@ -297,12 +324,19 @@ export class Task implements TaskRow {
       due = TaskEmoji.DUE + ' ' + this.due
     }
 
+    // Completed date
+    let completed = ''
+    if (this.status === TaskStatus.DONE && settings.completedDisplay === DisplayOption.EMOJI) {
+      completed = TaskEmoji.COMPLETED + ' ' + moment(this.completed).format('YYYY-MM-DD')
+    }
+
     const parts = [
       '\t'.repeat(indent) + `- [${this.status}]`,
       this.getTypeSignifier(),
       this.text,
       scheduled,
       due,
+      completed,
       '^' + this.tasks.blockPrefix + this.id
     ]
     return parts
@@ -315,7 +349,7 @@ export class Task implements TaskRow {
    */
   update () {
     if (!this.id || !this.path) {
-      console.log('Unable to update task ' + this.text + ' as there is no ID or path for it')
+      debug('Unable to update task ' + this.text + ' as there is no ID or path for it')
       return
     }
 
@@ -379,7 +413,7 @@ export class Task implements TaskRow {
     subtask.parent = this.id
     subtask.line = line
 
-    const tfile = this.tasks.getTFileFromPath(this.path)
+    const tfile = getTFileFromPath(this.tasks.app, this.path)
     if (tfile) {
       await this.tasks.app.vault.process(tfile, data => {
         const lines = data.split('\n')

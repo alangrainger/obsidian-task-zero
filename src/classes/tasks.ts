@@ -3,7 +3,7 @@ import DoPlugin from '../main'
 import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
-import { debug } from '../functions'
+import { debug, getOrCreateFile, getTFileFromPath } from '../functions'
 import { TaskInputModal } from '../views/task-input-modal'
 import moment from 'moment'
 
@@ -56,12 +56,12 @@ export class Tasks {
     debug('Processing cache update for ' + cacheUpdate.file.path)
 
     const processed: CacheUpdateItem[] = []
-    const updated: Task[] = []
+    const updated: CacheUpdateItem[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
       const res = new Task(this).initFromListItem(item, cacheUpdate, processed)
       if (res.valid) {
         processed.push({ task: res.task, cacheItem: item })
-        if (res.isUpdated) updated.push(res.task)
+        if (res.hasChanges) updated.push({ task: res.task, cacheItem: item })
       }
     }
 
@@ -69,44 +69,49 @@ export class Tasks {
     const processedIds = processed.map(x => x.task.id)
     this.db.rows()
       .filter(row =>
+        !row.orphaned &&
         row.path === cacheUpdate.file.path &&
         !processedIds.includes(row.id))
       .forEach(task => {
+        debug('Orphaning task ' + task.id)
         task.orphaned = moment().valueOf()
         this.db.saveDb()
       })
 
     // Update the file markdown contents if needed, for example to add task IDs
-    let updatedCount = 0
-    await this.plugin.app.vault.process(cacheUpdate.file, data => {
-      if (cacheUpdate.data === data) {
-        // The live file contents is the same as the expected contents from the cache
-        // (this is the ideal case)
-        const lines = cacheUpdate.data.split('\n')
-        for (const row of processed) {
-          const newLine = row.task.generateMarkdownTask()
-          if (lines[row.cacheItem.position.start.line] !== newLine) {
-            lines[row.cacheItem.position.start.line] = newLine
-            updatedCount++
+    if (updated.length) {
+      let updatedCount = 0
+      await this.plugin.app.vault.process(cacheUpdate.file, data => {
+        if (cacheUpdate.data === data) {
+          // The live file contents is the same as the expected contents from the cache
+          // (this is the ideal case)
+          const lines = cacheUpdate.data.split('\n')
+          for (const row of updated) {
+            const newLine = row.task.generateMarkdownTask()
+            if (lines[row.cacheItem.position.start.line] !== newLine) {
+              lines[row.cacheItem.position.start.line] = newLine
+              updatedCount++
+            }
           }
+          if (updatedCount) data = lines.join('\n')
+        } else {
+          // Cache and file differ - this is bad.
+          // We don't want to modify the file here and risk content loss.
+          // Orphan these tasks in the DB and re-process them again next time.
+          debug('Cache and file differ')
+          updated.forEach(row => {
+            if (row.task.id) {
+              debug('Orphaning task ' + row.task.id)
+              row.task.orphaned = moment().valueOf()
+              this.db.update(row.task.getData())
+            }
+          })
         }
-        if (updatedCount) data = lines.join('\n')
-      } else {
-        // Cache and file differ - this is bad.
-        // We don't want to modify the file here and risk content loss.
-        // Orphan these tasks in the DB and re-process them again next time.
-        debug('Cache and file differ')
-        processed.forEach(row => {
-          if (row.task.id) {
-            row.task.orphaned = moment().valueOf()
-            this.db.update(row.task.getData())
-          }
-        })
-      }
-      return data
-    })
+        return data
+      })
+    }
 
-    debug('updated # ' + updated.length)
+    debug(`Updated ${updated.length} tasks in ${cacheUpdate.file.path}, with ${processed.length - updated.length} tasks unchanged`)
     if (updated.length) {
       dbEvents.emit(DatabaseEvent.TasksExternalChange)
     }
@@ -157,7 +162,7 @@ export class Tasks {
    * Queue tasks for update in the original note, using the data from the DB
    */
   addTaskToUpdateQueue (id: number) {
-    console.log('Adding to queue: ' + id)
+    debug('Adding to queue: ' + id)
     this.noteUpdateQueue.add(id)
     this.debounceQueueUpdate()
   }
@@ -179,16 +184,16 @@ export class Tasks {
     }
   }
 
-  getTFileFromPath (path: string) {
-    const tfile = this.app.vault.getAbstractFileByPath(path)
-    return tfile instanceof TFile ? tfile : undefined
-  }
-
+  /**
+   * Update existing task(s) data in a note. This will only match
+   * existing tasks based on their ID. If no exact match(es) found,
+   * nothing will be changed.
+   */
   async updateTasksInNote (path: string, tasks: Task[]) {
-    const tfile = this.getTFileFromPath(path)
+    const tfile = getTFileFromPath(this.app, path)
     if (tfile) {
       await this.app.vault.process(tfile, data => {
-        console.log('Bulk update tasks in ' + path)
+        debug(`Updated ${tasks.length} tasks in ${path}`)
         for (const task of tasks) {
           data = data.replace(this.taskLineRegex(task.id), task.generateMarkdownTask())
         }
@@ -199,23 +204,21 @@ export class Tasks {
 
   async addTaskToDefaultNote (task: Task) {
     if (!task.valid()) return
-    let path = this.plugin.settings.defaultNote
-    if (!path.endsWith('.md')) path += '.md'
-    let file = this.getTFileFromPath(path)
-    if (!file) {
-      // File doesn't exist, so create it
-      file = await this.app.vault.create(path, '')
-    }
+    const file = await getOrCreateFile(this.app, this.plugin.settings.defaultNote)
     await this.app.vault.append(file, task.generateMarkdownTask() + '\n')
   }
 
-  openQuickCpature () {
+  openQuickCapture () {
     new TaskInputModal(this.plugin, null, taskText => {
       if (taskText.trim().length) {
         const task = new Task(this).initFromText(taskText).task
         this.addTaskToDefaultNote(task).then()
       }
     }).open()
+  }
+
+  archiveCompletedTasks () {
+
   }
 
   cleanOrphans () {

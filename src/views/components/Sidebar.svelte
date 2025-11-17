@@ -23,7 +23,6 @@
   })
 
   const updateDb = () => {
-    console.log('Updating DB from sidebar')
     activeTask.update()
   }
 </script>

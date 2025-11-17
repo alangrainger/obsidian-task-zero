@@ -1,11 +1,11 @@
 {
-	"id": "do",
-	"name": "Do",
+	"id": "next-action",
+	"name": "Next Action",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"description": "An opinionated GTD-style task management system for Obsidian",
+	"author": "Alan Grainger",
+	"authorUrl": "https://github.com/alangrainger",
 	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }
