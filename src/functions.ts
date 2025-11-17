@@ -29,8 +29,8 @@ export function assignExisting (
 export function fromNow (date?: Moment): string {
   if (!date?.isValid()) return ''
   const hours = moment().endOf('day').diff(date, 'hours')
-  if (hours <= 24) return 'Today'
-  if (hours <= 48) return 'Yesterday'
+  if (hours <= 24) return 'today'
+  if (hours <= 48) return 'yesterday'
   return date.fromNow()
 }
 

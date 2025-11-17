@@ -1,7 +1,7 @@
 {
 	"id": "next-action",
 	"name": "Next Action",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "An opinionated GTD-style task management system for Obsidian",
 	"author": "Alan Grainger",

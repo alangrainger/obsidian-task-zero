@@ -21,10 +21,6 @@
       scopes.tasklist.enable()
     }
   })
-
-  const updateDb = () => {
-    activeTask.update()
-  }
 </script>
 
 {#if state.sidebar.open && activeTask}
@@ -33,15 +29,16 @@
         <div class="setting-item">
             <div class="setting-item-name">Task</div>
             <!--<div class="setting-item-description"></div>-->
-            <input bind:this={state.sidebar.fields.text} type="text" spellcheck="false" bind:value={activeTask.text}
-                   oninput={updateDb}>
+            <input type="text" spellcheck="false"
+                   bind:value={activeTask.text}
+                   oninput={() => activeTask.update()}>
         </div>
         <div class="setting-item">
-            <select class="dropdown">
-                <option value="">Next action</option>
-                <option value="">Project</option>
-                <option value="">Someday</option>
-            </select>
+            <div class="setting-item-name">Scheduled</div>
+            <input type="text" spellcheck="false"
+                   placeholder="YYYY-MM-DD"
+                   bind:value={activeTask.scheduled}
+                   oninput={() => activeTask.update()}>
         </div>
     </aside>
 {/if}

@@ -69,6 +69,8 @@ export class DoSettingTab extends PluginSettingTab {
   constructor (app: App, plugin: MyPlugin) {
     super(app, plugin)
     this.plugin = plugin
+
+
   }
 
   display (): void {
