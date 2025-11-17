@@ -29,7 +29,7 @@
         <div class="setting-item">
             <div class="setting-item-name">Task</div>
             <!--<div class="setting-item-description"></div>-->
-            <input type="text" spellcheck="false"
+            <input bind:this={state.sidebar.fields.text} type="text" spellcheck="false"
                    bind:value={activeTask.text}
                    oninput={() => activeTask.update()}>
         </div>

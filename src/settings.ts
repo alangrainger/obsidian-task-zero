@@ -56,7 +56,7 @@ export interface DoPluginSettings {
 export const DEFAULT_SETTINGS: DoPluginSettings = {
   defaultNote: 'Next Action quick add',
   archiveNote: 'Next Action completed tasks',
-  taskBlockPrefix: 'do',
+  taskBlockPrefix: 'na',
   createdDisplay: DisplayOption.NONE,
   scheduledDisplay: DisplayOption.EMOJI,
   dueDisplay: DisplayOption.EMOJI,

@@ -16,6 +16,7 @@ export interface CacheUpdate {
 export type CacheUpdateItem = {
   task: Task
   cacheItem: ListItemCache
+  hasChanges: boolean
 }
 
 export const TaskChangeEvent = 'do:tasks-change'
@@ -56,14 +57,13 @@ export class Tasks {
     debug('Processing cache update for ' + cacheUpdate.file.path)
 
     const processed: CacheUpdateItem[] = []
-    const updated: CacheUpdateItem[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
       const res = new Task(this).initFromListItem(item, cacheUpdate, processed)
       if (res.valid) {
-        processed.push({ task: res.task, cacheItem: item })
-        if (res.hasChanges) updated.push({ task: res.task, cacheItem: item })
+        processed.push({ task: res.task, cacheItem: item, hasChanges: res.hasChanges })
       }
     }
+    const updated = processed.filter(x => x.hasChanges)
 
     // Orphan tasks in the DB which are no longer present in the note
     const processedIds = processed.map(x => x.task.id)

@@ -68,7 +68,7 @@
     ['ArrowUp', [], listUp],
     ['ArrowDown', [], listDown],
     ['p', ['Alt'], () => setTaskType(TaskType.PROJECT)],
-    ['a', ['Alt'], () => setTaskType(TaskType.NEXT_ACTION)],
+    ['n', ['Alt'], () => setTaskType(TaskType.NEXT_ACTION)],
     ['s', ['Alt'], () => setTaskType(TaskType.SOMEDAY)],
     ['w', ['Alt'], () => setTaskType(TaskType.WAITING_ON)]
   ])
@@ -78,12 +78,15 @@
     ['j', [], listUp],
     ['k', [], listDown],
     ['Enter', [], openActiveRow],
-    [' ', [], () => activeTask.toggle()],
+    [' ', [], () => {
+      activeTask.toggle()
+      listDown()
+    }],
     ['p', [], () => setTaskType(TaskType.PROJECT)],
-    ['a', [], () => setTaskType(TaskType.NEXT_ACTION)],
+    ['n', [], () => setTaskType(TaskType.NEXT_ACTION)],
     ['s', [], () => setTaskType(TaskType.SOMEDAY)],
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
-    ['n', [], () => {
+    ['t', [], () => {
       const project = activeTask.type === TaskType.PROJECT ? activeTask : null
       new TaskInputModal(plugin, project, (taskText) => {
         if (!taskText.trim().length) {
@@ -126,11 +129,10 @@
   }
 
   function clickRow (id: number) {
-    if (state.activeId === id && state.sidebar.open) {
-      state.sidebar.open = false
+    if (state.activeId === id) {
+      state.sidebar.open = !state.sidebar.open
     } else {
       state.activeId = id
-      openActiveRow()
     }
   }
 

@@ -219,6 +219,9 @@ export class Task implements TaskRow {
         ancestors = ancestors.length ? ancestors : [parentTask]
         const rootParent = ancestors[0]
         rootParent.type = TaskType.PROJECT
+        // Ensure the root parent is in the 'updated' list
+        const rootParentItem = previous.find(x => x.task.id === rootParent.id)
+        if (rootParentItem) rootParentItem.hasChanges = true
         // Check the sequence. The first available sub-task should be a Next Action,
         // and the rest should be Dependent
         record.type = previous.find(prev => ancestors
@@ -327,7 +330,8 @@ export class Task implements TaskRow {
     // Completed date
     let completed = ''
     if (this.status === TaskStatus.DONE && settings.completedDisplay === DisplayOption.EMOJI) {
-      completed = TaskEmoji.COMPLETED + ' ' + moment(this.completed).format('YYYY-MM-DD')
+      const date = this.completed ? moment(this.completed) : moment()
+      completed = TaskEmoji.COMPLETED + ' ' + date.format('YYYY-MM-DD')
     }
 
     const parts = [
