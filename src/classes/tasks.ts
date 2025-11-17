@@ -3,8 +3,9 @@ import DoPlugin from '../main'
 import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
-import { debug, moment } from '../functions'
+import { debug } from '../functions'
 import { TaskInputModal } from '../views/task-input-modal'
+import moment from 'moment'
 
 export interface CacheUpdate {
   file: TFile
@@ -122,7 +123,7 @@ export class Tasks {
       .filter(row => {
         // Match INBOX type to tasks which have no type set
         const typeMatch = !type || row.type === type || (type === TaskType.INBOX && !row.type)
-        return typeMatch && !row.orphaned && row.status !== TaskStatus.DONE
+        return typeMatch && !row.orphaned && row.status !== TaskStatus.DONE && row.path
       })
       .map(row => new Task(this).initFromRow(row).task)
       // Sort by created date - oldest task first
@@ -133,17 +134,23 @@ export class Tasks {
    * This is the main task list that a user works from, in opinionated GTD order
    */
   getTasklist () {
-    return this
+    const allTasks = this.getTasks()
+    const tasks = allTasks.filter(task => task.isDue)
       // Inbox tasks
-      .getTasks(TaskType.INBOX)
+      .concat(allTasks.filter(task => task.type === TaskType.INBOX))
       // Projects that have no next action (i.e. no sub-tasks)
-      .concat(this.getTasks(TaskType.PROJECT)
+      .concat(allTasks.filter(task => task.type === TaskType.PROJECT)
         .filter(project => !this.db.rows().filter(subtask => subtask.parent === project.id && subtask.status !== TaskStatus.DONE && !subtask.orphaned).length
         ))
       // Next Actions
-      .concat(this.getTasks(TaskType.NEXT_ACTION))
+      .concat(allTasks.filter(task => task.type === TaskType.NEXT_ACTION))
       // Waiting-On
-      .concat(this.getTasks(TaskType.WAITING_ON))
+      .concat(allTasks.filter(task => task.type === TaskType.WAITING_ON))
+
+    // Deduplicate, keeping the first instance of any task
+    return Array.from(
+      new Map(tasks.map(task => [task.id, task])).values()
+    )
   }
 
   /**
@@ -209,5 +216,18 @@ export class Tasks {
         this.addTaskToDefaultNote(task).then()
       }
     }).open()
+  }
+
+  cleanOrphans () {
+    const now = moment()
+    for (const row of this.db.rows()) {
+      if (!row.path) {
+        // Task has no path, so orphan it now
+        if (!row.orphaned) row.orphaned = now.valueOf()
+      }
+      if (now.diff(moment(row.orphaned), 'days') > 30) {
+        // Task has been orphaned for more than 1 month, delete it
+      }
+    }
   }
 }

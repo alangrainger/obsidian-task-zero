@@ -7,7 +7,7 @@
   import type DoPlugin from '../../main'
   import type { State } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
-  import { moment } from '../../functions'
+  import { fromNow } from '../../functions'
   import { DoTaskView, type TaskScopes } from '../task-view'
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
@@ -139,17 +139,20 @@
   /**
    * Display an icon in the 2nd column, for specific types only
    */
-  function icon (type: TaskType) {
+  function icon (task: Task) {
+    if (task.isDue) {
+      return `<span title="Task is due ${fromNow(task.isDue)}">🗓️</span>`
+    }
     const tooltip = {
       [TaskType.PROJECT]: 'Project has no next action. Select the row and press N / Alt+N to create one.',
       [TaskType.WAITING_ON]: 'Waiting On'
     }
     const excludedIcons = [TaskType.NEXT_ACTION]
-    if (!excludedIcons.includes(type)) {
-      const key = Object.keys(TaskType).find(k => TaskType[k] === type)
+    if (!excludedIcons.includes(task.type)) {
+      const key = Object.keys(TaskType).find(k => TaskType[k] === task.type)
       const image = TaskEmoji[key] || ''
       if (image) {
-        return `<span title="${tooltip[type] || ''}">${image}</span>`
+        return `<span title="${tooltip[task.type] || ''}">${image}</span>`
       }
     }
     return ''
@@ -182,8 +185,8 @@
             <th></th>
             <th></th>
             <th>Task</th>
-            <th>Note</th>
-            <th>Created</th>
+            <th>Due</th>
+            <th></th>
         </tr>
         </thead>
         <tbody>
@@ -196,18 +199,20 @@
                 <td class="gtd-table-checkbox">
                     <Checkbox {task}/>
                 </td>
-                <td style="width:1.8em">{@html icon(task.type)}</td>
+                <td style="width:1.8em">{@html icon(task)}</td>
                 <td class="gtd-table-task">
                     <div class="gtd-table-clip">
                         {task.text}
                     </div>
                 </td>
-                <td class="gtd-table-note">
-                    <div class="gtd-table-clip">
-                        <NoteLink app={plugin.app} path={task.path}/>
-                    </div>
+                <td class="done-task-table-due">
+                    {#if task.isDue}
+                        <a href="." class="tag">{fromNow(task.isDue)}</a>
+                    {/if}
                 </td>
-                <td>{moment(task.created).format('D MMM YYYY')}</td>
+                <td>
+                    <NoteLink {task} icon={true}/>
+                </td>
             </tr>
         {/each}
         </tbody>

@@ -72,3 +72,11 @@
 .gtd-sidebar  input {
     width: 100%;
 }
+
+.done-task-table-due {
+    text-align: center;
+}
+.done-task-table-due a {
+    background-color: #bd5b2c;
+    color: white;
+}

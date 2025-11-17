@@ -1,7 +1,9 @@
 import { type ListItemCache, Notice } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
-import { assignExisting, moment } from '../functions'
+import { assignExisting } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
+import moment from 'moment'
+import { DisplayOption } from '../settings'
 
 export enum TaskStatus {
   TODO = ' ',
@@ -48,6 +50,8 @@ export interface TaskRow {
   orphaned: number // If the task is not present in any note
   line: number     // The line number of the task in the original note (used for sequencing project sub-tasks)
   parent: number   // The parent task ID, if this is a sub-task
+  due: string
+  scheduled: string
 }
 
 export class Task implements TaskRow {
@@ -62,6 +66,8 @@ export class Task implements TaskRow {
   type = $state(TaskType.INBOX)
   line = 0
   parent = 0
+  due = ''
+  scheduled = ''
 
   markdownTaskParser: MarkdownTaskParser
 
@@ -75,7 +81,9 @@ export class Task implements TaskRow {
       created: moment().format(),
       type: TaskType.INBOX,
       line: 0,
-      parent: 0
+      parent: 0,
+      due: '',
+      scheduled: ''
     }
   }
 
@@ -102,7 +110,9 @@ export class Task implements TaskRow {
       created: this.created,
       type: this.type,
       line: this.line,
-      parent: this.parent
+      parent: this.parent,
+      due: this.due,
+      scheduled: this.scheduled
     }
   }
 
@@ -113,6 +123,23 @@ export class Task implements TaskRow {
 
   get isCompleted () {
     return this.status === TaskStatus.DONE
+  }
+
+  /**
+   * "Due" is considered a task which has a "scheduled" or "due" date which is on or before today
+   */
+  get isDue (): moment.Moment | undefined {
+    const today = moment()
+
+    if (this.due) {
+      const due = moment(this.due)
+      if (due.isSameOrBefore(today, 'day')) return due
+    }
+
+    if (this.scheduled) {
+      const scheduled = moment(this.scheduled)
+      if (scheduled.isSameOrBefore(today, 'day')) return scheduled
+    }
   }
 
   initFromId (id: number) {
@@ -158,6 +185,7 @@ export class Task implements TaskRow {
 
     // Update with the current line position
     record.line = item.position.start.line
+    record.orphaned = 0 // Since it definitely exists in this note
 
     // Is this a sub-task?
     if (item.parent > 0) {
@@ -247,6 +275,8 @@ export class Task implements TaskRow {
   }
 
   generateMarkdownTask () {
+    const settings = this.tasks.plugin.settings
+
     // Get indentation level
     let indent = 0
     let parent = this.parent
@@ -255,10 +285,24 @@ export class Task implements TaskRow {
       parent = this.tasks.db.getRow(parent)?.parent || 0
     }
 
+    // Scheduled date
+    let scheduled = ''
+    if (this.scheduled && settings.scheduledDisplay === DisplayOption.EMOJI) {
+      scheduled = TaskEmoji.SCHEDULED + ' ' + this.scheduled
+    }
+
+    // Due date
+    let due = ''
+    if (this.due && settings.dueDisplay === DisplayOption.EMOJI) {
+      due = TaskEmoji.DUE + ' ' + this.due
+    }
+
     const parts = [
       '\t'.repeat(indent) + `- [${this.status}]`,
       this.getTypeSignifier(),
       this.text,
+      scheduled,
+      due,
       '^' + this.tasks.blockPrefix + this.id
     ]
     return parts

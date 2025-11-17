@@ -1,15 +1,23 @@
 <script lang="ts">
-  import type { App } from 'obsidian'
+  import type { Task } from '../../classes/task.svelte'
 
-  export let path: string
-  export let app: App
+  interface Props {
+    task: Task;
+    icon?: Boolean;
+  }
 
-  $: href = path.replace(/\.md$/, '')
-  $: basename = path?.match(/([^/]+).md$/)?.[1] || ''
+  let { task, icon }: Props = $props()
 
-  function openLink () {
-    app.workspace.openLinkText(basename, path).then()
+  let href = $derived(task?.path?.replace(/\.md$/, ''))
+  let basename = $derived(task?.path?.match(/([^/]+).md$/)?.[1] || '')
+  let text = $derived(icon ? '📄' : basename)
+
+  function openLink (event: MouseEvent) {
+    event.stopPropagation()
+    if (task?.path) task.tasks.app.workspace.openLinkText(basename, task.path).then()
   }
 </script>
 
-<a on:click="{openLink}" {href} class="internal-link" title="{basename}">{basename}</a>
+{#if task?.path}
+    <a onclick="{openLink}" {href} class="internal-link" title="{basename}">{text}</a>
+{/if}

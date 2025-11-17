@@ -1,6 +1,6 @@
 import { App, debounce } from 'obsidian'
 import { TaskChangeEvent } from './tasks'
-import { moment } from '../functions'
+import moment from 'moment'
 
 const PLUGIN_ID = require('../../manifest.json').id
 
