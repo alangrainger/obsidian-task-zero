@@ -178,7 +178,6 @@
 
 <div class="gtd-view">
     <Sidebar {activeTask} {state} {scopes}/>
-    {activeIndex}
     <table class="gtd-table">
         <thead>
         <tr>
