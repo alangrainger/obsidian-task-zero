@@ -36,7 +36,6 @@ export class Table<R extends BaseRow> {
     this.app = app
     this.name = name
     this.dataChanged = new Event(TaskChangeEvent)
-    this.loadDb().then()
 
     // Set up debounce for database write to disk
     this.saveDb = debounce(() => {

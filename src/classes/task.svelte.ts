@@ -18,7 +18,7 @@ export enum TaskType {
 
 export enum TaskEmoji {
   INBOX = '📥',
-  NEXT_ACTION = '✅',
+  NEXT_ACTION = '➡️',
   PROJECT = '🗃️',
   WAITING_ON = '⏸️',
   SOMEDAY = '💤',
@@ -164,11 +164,16 @@ export class Task implements TaskRow {
       const parentTask = previous.find(x => x.task.line === item.parent)?.task
       if (parentTask) {
         record.parent = parentTask.id
-        // Ensure the parent is set to Project type
-        parentTask.type = TaskType.PROJECT
-        // Check the sequence. The first sub-task should be a Next Action,
+        // Ensure the root-level parent is set to Project type
+        let ancestors = parentTask.ancestors
+        ancestors = ancestors.length ? ancestors : [parentTask]
+        const rootParent = ancestors[0]
+        rootParent.type = TaskType.PROJECT
+        // Check the sequence. The first available sub-task should be a Next Action,
         // and the rest should be Dependent
-        record.type = previous.find(x => x.task.parent === parentTask.id && !x.task.isCompleted) ? TaskType.DEPENDENT : TaskType.NEXT_ACTION
+        record.type = previous.find(prev => ancestors
+          .map(x => x.id)
+          .includes(prev.task.parent) && !prev.task.isCompleted) ? TaskType.DEPENDENT : TaskType.NEXT_ACTION
       }
     }
 
@@ -211,8 +216,18 @@ export class Task implements TaskRow {
   }
 
   getTypeSignifier () {
-    if (this.type === TaskType.PROJECT) return TaskEmoji.PROJECT
-    if (this.type === TaskType.SOMEDAY) return TaskEmoji.SOMEDAY
+    if (this.isCompleted) return '' // No need for signifier cluttering up the view for completed tasks
+
+    const signifiers = [
+      TaskType.PROJECT,
+      TaskType.SOMEDAY,
+      TaskType.NEXT_ACTION,
+      TaskType.DEPENDENT
+    ]
+    if (signifiers.includes(this.type)) {
+      const key = Object.keys(TaskType).find(key => TaskType[key as keyof typeof TaskType] === this.type) || '';
+      return TaskEmoji[key as keyof typeof TaskEmoji] || ''
+    }
     return ''
   }
 
@@ -249,6 +264,70 @@ export class Task implements TaskRow {
     this.tasks.db.update(this.getData())
     // Queue the task for update in the original markdown note
     this.tasks.addTaskToUpdateQueue(this.id)
+  }
+
+  /**
+   * Returns a list of all parents back to the root level
+   */
+  get ancestors (): Task[] {
+    const ancestors: Task[] = []
+    let parentId = this.parent
+    while (parentId) {
+      const parentTask = this.tasks.getTaskById(parentId)
+      if (parentTask.valid()) {
+        parentId = parentTask.parent
+        ancestors.push(parentTask)
+      } else {
+        parentId = 0
+      }
+    }
+    return ancestors.reverse()
+  }
+
+  get descendants (): Task[] {
+    const tasks = this.tasks.db.rows() // Get all tasks
+
+    // Recursive function to get descendants
+    const getDescendants = (parentId: number): Task[] => {
+      return tasks
+        .filter(row => row.parent === parentId && row.orphaned === 0)
+        .map(row => [
+          new Task(this.tasks).initFromRow(row).task,
+          ...getDescendants(row.id)
+        ])
+        .flat()
+        // Sort by the order they appear in the note
+        .sort((a, b) => a.line - b.line)
+    }
+
+    return getDescendants(this.id)
+  }
+
+  /**
+   * Creates a subtask for the current task. This will convert the current task
+   * to a project if not already the case.
+   * It will add the subtask at the end of any existing subtasks.
+   */
+  async createSubtask (newTaskText: string) {
+    // Get the position in the note to insert the new task
+    const descendants = this.descendants
+    const line = (descendants.length ? descendants[descendants.length - 1].line : this.line) + 1
+
+    // Create the new subtask
+    const subtask = new Task(this.tasks).initFromRow({
+      text: newTaskText
+    } as TaskRow).task
+    subtask.parent = this.id
+    subtask.line = line
+
+    const tfile = this.tasks.getTFileFromPath(this.path)
+    if (tfile) {
+      await this.tasks.app.vault.process(tfile, data => {
+        const lines = data.split('\n')
+        lines.splice(line, 0, subtask.generateMarkdownTask())
+        return lines.join('\n')
+      })
+    }
   }
 }
 
@@ -296,6 +375,12 @@ function parseMarkdownTaskString (text: string, prefix: string): MarkdownTaskEle
   let isSomeday
   [isSomeday, text] = detectEmojiOrTag(text, TaskEmoji.SOMEDAY, TaskType.SOMEDAY)
   if (isSomeday) taskType = TaskType.SOMEDAY
+
+  // Remove other icons which shouldn't be in the final task line
+  const remove = [TaskEmoji.NEXT_ACTION, TaskEmoji.DEPENDENT]
+  remove.forEach(emoji => {
+    text = text.replace(emoji, ' ')
+  })
 
   if (status && text) {
     return {

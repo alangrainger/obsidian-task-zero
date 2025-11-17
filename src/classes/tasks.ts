@@ -1,6 +1,6 @@
 import { Task, type TaskRow, TaskStatus, TaskType } from './task.svelte'
 import DoPlugin from '../main'
-import { type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
+import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
 import { debug, moment } from '../functions'
@@ -20,6 +20,7 @@ export const TaskChangeEvent = 'do:tasks-change'
 
 export class Tasks {
   readonly tableName = 'tasks'
+  app: App
   plugin: DoPlugin
   db: Table<TaskRow>
   private noteUpdateQueue: Set<number> = new Set([])
@@ -27,7 +28,12 @@ export class Tasks {
 
   constructor (plugin: DoPlugin) {
     this.plugin = plugin
-    this.db = new Table<TaskRow>(this.tableName, this.plugin.app)
+    this.app = plugin.app
+    this.db = new Table<TaskRow>(this.tableName, this.app)
+
+    // Load tasks data from disk
+    this.db.loadDb().then()
+
     this.debounceQueueUpdate = debounce(() => {
       this.processQueue().then()
     }, 5000, true)
@@ -165,10 +171,15 @@ export class Tasks {
     }
   }
 
+  getTFileFromPath (path: string) {
+    const tfile = this.app.vault.getAbstractFileByPath(path)
+    return tfile instanceof TFile ? tfile : undefined
+  }
+
   async updateTasksInNote (path: string, tasks: Task[]) {
-    const tfile = this.plugin.app.vault.getAbstractFileByPath(path)
-    if (tfile instanceof TFile) {
-      await this.plugin.app.vault.process(tfile, data => {
+    const tfile = this.getTFileFromPath(path)
+    if (tfile) {
+      await this.app.vault.process(tfile, data => {
         console.log('Bulk update tasks in ' + path)
         for (const task of tasks) {
           data = data.replace(this.taskLineRegex(task.id), task.generateMarkdownTask())

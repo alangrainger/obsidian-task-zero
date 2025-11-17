@@ -88,8 +88,10 @@
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     ['n', [], () => {
       new TaskInputModal(plugin.app, null, (taskText) => {
-        console.log('Task entered:', taskText)
-        // Handle the task text here
+        if (activeTask.type === TaskType.PROJECT) {
+          console.log('Creating subtask', taskText)
+          activeTask.createSubtask(taskText).then()
+        }
       }).open()
     }]
   ])
