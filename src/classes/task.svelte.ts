@@ -317,13 +317,24 @@ export class Task implements TaskRow {
 
     if (signifiers.includes(this.type)) {
       const key = Object.keys(TaskType).find(key => TaskType[key as keyof typeof TaskType] === this.type) || ''
-      return TaskEmoji[key as keyof typeof TaskEmoji] || TaskEmoji.NONE
+      if (key === 'WAITING_ON') {
+        const displayOptions = this.tasks.plugin.settings.displayOptions
+        if (displayOptions.waitingOn === DisplayOption.TAG) {
+          return '#' + TaskType.WAITING_ON
+        } else if (displayOptions.waitingOn === DisplayOption.EMOJI) {
+          return TaskEmoji.WAITING_ON
+        } else {
+          return ''
+        }
+      } else {
+        return TaskEmoji[key as keyof typeof TaskEmoji] || TaskEmoji.NONE
+      }
     }
     return TaskEmoji.NONE
   }
 
   generateMarkdownTask () {
-    const settings = this.tasks.plugin.settings
+    const displayOptions = this.tasks.plugin.settings.displayOptions
 
     // Get indentation level
     let indent = 0
@@ -335,19 +346,19 @@ export class Task implements TaskRow {
 
     // Scheduled date
     let scheduled = ''
-    if (this.scheduled && settings.scheduledDisplay === DisplayOption.EMOJI) {
+    if (this.scheduled && displayOptions.scheduled === DisplayOption.EMOJI) {
       scheduled = TaskEmoji.SCHEDULED + ' ' + this.scheduled
     }
 
     // Due date
     let due = ''
-    if (this.due && settings.dueDisplay === DisplayOption.EMOJI) {
+    if (this.due && displayOptions.due === DisplayOption.EMOJI) {
       due = TaskEmoji.DUE + ' ' + this.due
     }
 
     // Completed date
     let completed = ''
-    if (this.status === TaskStatus.DONE && settings.completedDisplay === DisplayOption.EMOJI) {
+    if (this.status === TaskStatus.DONE && displayOptions.completed === DisplayOption.EMOJI) {
       const date = this.completed ? moment(this.completed) : moment()
       completed = TaskEmoji.COMPLETED + ' ' + date.format('YYYY-MM-DD')
     }

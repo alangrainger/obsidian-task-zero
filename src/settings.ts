@@ -17,6 +17,12 @@ export enum DisplayOption {
 
 const taskElements: TaskElement[] = [
   {
+    key: 'waitingOn',
+    name: 'Waiting on',
+    dropdownOptions: [DisplayOption.TAG, DisplayOption.EMOJI, DisplayOption.NONE],
+    emoji: TaskEmoji.WAITING_ON
+  },
+  {
     key: 'created',
     name: 'Created date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
@@ -47,6 +53,7 @@ export interface NextActionSettings {
   archiveNote: string;
   taskBlockPrefix: string;
   displayOptions: {
+    waitingOn: DisplayOption;
     created: DisplayOption;
     scheduled: DisplayOption;
     due: DisplayOption;
@@ -73,6 +80,7 @@ export const DEFAULT_SETTINGS: NextActionSettings = {
   archiveNote: 'Next Action completed tasks',
   taskBlockPrefix: 'na',
   displayOptions: {
+    waitingOn: DisplayOption.TAG,
     created: DisplayOption.NONE,
     scheduled: DisplayOption.EMOJI,
     due: DisplayOption.EMOJI,
