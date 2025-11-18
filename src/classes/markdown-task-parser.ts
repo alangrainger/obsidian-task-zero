@@ -5,6 +5,11 @@ export interface MarkdownTaskElements extends Partial<TaskRow> {
   text: string
 }
 
+export interface ParsedMarkdownTask {
+  parsed: MarkdownTaskElements
+  excluded: boolean
+}
+
 export class MarkdownTaskParser {
   plugin: DoPlugin
   regex: { [key: string]: RegExp }
@@ -20,7 +25,8 @@ export class MarkdownTaskParser {
       created: /➕\s*(\d{4}-\d{2}-\d{2})/,
       due: /📅\s*(\d{4}-\d{2}-\d{2})/,
       scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,
-      completed: /✅\s*(\d{4}-\d{2}-\d{2})/
+      completed: /✅\s*(\d{4}-\d{2}-\d{2})/,
+      excluded: new RegExp(`\\s${plugin.settings.excludeTags.task}(\\s|$)`)
     } as const
   }
 
@@ -31,7 +37,7 @@ export class MarkdownTaskParser {
   /**
    * Process an arbitrary line of text to extract task elements
    */
-  processText (text: string): MarkdownTaskElements {
+  processText (text: string): ParsedMarkdownTask {
     this.taskLine = text
 
     // Run all functions first, as they remove the matched text from the remaining task text
@@ -41,6 +47,7 @@ export class MarkdownTaskParser {
     const due = this.getDue()
     const scheduled = this.getScheduled()
     const completed = this.getCompleted()
+    const excluded = this.getExcluded()
 
     // Ensure all icons are removed from the final task line
     Object.values(TaskEmoji)
@@ -51,19 +58,22 @@ export class MarkdownTaskParser {
       })
 
     return {
-      type: isSomeday ? TaskType.SOMEDAY : isProject ? TaskType.PROJECT : undefined,
-      created,
-      due,
-      scheduled,
-      completed,
-      text: this.taskLine.trim()
+      parsed: {
+        type: isSomeday ? TaskType.SOMEDAY : isProject ? TaskType.PROJECT : undefined,
+        created,
+        due,
+        scheduled,
+        completed,
+        text: this.taskLine.trim()
+      },
+      excluded: !!excluded
     }
   }
 
   /**
    * Process a full markdown task line (e.g. it starts with "- [ ] ..."
    */
-  processTaskLine (text: string): MarkdownTaskElements | false {
+  processTaskLine (text: string): ParsedMarkdownTask | false {
     this.taskLine = text
 
     // Run all functions first, as they remove the matched text from the remaining task text
@@ -71,11 +81,11 @@ export class MarkdownTaskParser {
     if (!status) return false // Doesn't appear to be a task line
     const id = this.getId()
     // Process remaining elements
-    const parsed = this.processText(this.taskLine)
-    parsed.id = id
-    parsed.status = status
+    const data = this.processText(this.taskLine)
+    data.parsed.id = id
+    data.parsed.status = status
 
-    return parsed
+    return data
   }
 
   getAndRemoveMatch (regex: RegExp): string {
@@ -125,5 +135,9 @@ export class MarkdownTaskParser {
 
   getCompleted () {
     return this.getAndRemoveMatch(this.regex.completed)
+  }
+
+  getExcluded () {
+    return this.getAndRemoveMatch(this.regex.excluded)
   }
 }

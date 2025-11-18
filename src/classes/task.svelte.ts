@@ -171,10 +171,27 @@ export class Task implements TaskRow {
     // Get the original task line
     const lines = cacheUpdate.data.split('\n')
     const originalLine = lines[item.position.start.line] || ''
-    const parsed = this.markdownTaskParser.processTaskLine(originalLine)
-    if (!parsed) {
+    const parsedRes = this.markdownTaskParser.processTaskLine(originalLine)
+    if (!parsedRes || parsedRes.excluded) {
       // Not able to find a task in this line
       return this.resultFromInit(false)
+    }
+    const parsed = parsedRes.parsed
+
+    // Check whether the section is excluded
+    if (cacheUpdate.cache.tags?.map(x => x.tag).includes(this.tasks.plugin.settings.excludeTags.note)) {
+      // This note is excluded from processing
+      return this.resultFromInit(false)
+    } else {
+      const nearestHeading = cacheUpdate.cache.headings
+        ?.filter(heading => heading.position.start.line < item.position.start.line)
+        .pop()?.position.start.line
+      const section = lines.slice(nearestHeading || 0, item.position.start.line).join('\n')
+      if (section.match(new RegExp(`(^|\\s)${this.tasks.plugin.settings.excludeTags.section}($|\\s)`, 'm'))) {
+        // This section is excluded from processing
+        debug(`Task ${parsed.text} is excluded from processing`)
+        return this.resultFromInit(false)
+      }
     }
 
     // Check if this ID has already been used on this page (duplicate ID)
@@ -183,7 +200,6 @@ export class Task implements TaskRow {
 
     // Default task
     let record = this.DEFAULT_DATA
-    record.path = cacheUpdate.file.path
 
     // Check DB for existing task
     const existing = this.tasks.db.getRow(parsed.id || 0)
@@ -191,26 +207,25 @@ export class Task implements TaskRow {
     // Overwrite the base record with database-data (if any), then parsed data
     record = assignExisting(record, existing, parsed)
 
-    // If the task is completed AND the database task is also completed,
-    //   OR it doesn't exist in the database at all,
-    // return without making any changes. This is so that completed tasks
-    // remain truthful to their state as when they were originally ticked off.
-    // This allows completed tasks to be archived to a "Completed task" note
-    // without causing path etc to update.
     if (parsed.status === TaskStatus.DONE && (!existing || existing.status === TaskStatus.DONE)) {
+      // If the task is completed AND the database task is also completed,
+      //   OR it doesn't exist in the database at all,
+      // return without making any changes. This is so that completed tasks
+      // remain truthful to their state as when they were originally ticked off.
+      // This allows completed tasks to be archived to a "Completed task" note
+      // without causing path etc to update.
       this.setData(record)
       return this.resultFromInit(false)
-    }
-
-    // If the task is completed and the database task is not completed,
-    // set the completed date.
-    if (parsed.status === TaskStatus.DONE && existing?.status !== TaskStatus.DONE) {
+    } else if (parsed.status === TaskStatus.DONE && existing?.status !== TaskStatus.DONE) {
+      // If the task is completed and the database task is not completed,
+      // set the completed date.
       record.completed = moment().format()
     }
 
-    // Update with the current line position
-    record.line = item.position.start.line
+    // Update with the latest live metadata
+    record.line = item.position.start.line // If the task has been re-ordered within the note
     record.orphaned = 0 // Since it definitely exists in this note
+    record.path = cacheUpdate.file.path // In case the task has been moved from another note
 
     // Is this a sub-task?
     if (item.parent > 0) {

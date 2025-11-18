@@ -51,6 +51,11 @@ export interface NextActionSettings {
   scheduledDisplay: DisplayOption;
   dueDisplay: DisplayOption;
   completedDisplay: DisplayOption;
+  excludeTags: {
+    note: string;
+    section: string;
+    task: string;
+  }
   database: {
     tasks: {
       autoincrement: number;
@@ -67,6 +72,11 @@ export const DEFAULT_SETTINGS: NextActionSettings = {
   scheduledDisplay: DisplayOption.EMOJI,
   dueDisplay: DisplayOption.EMOJI,
   completedDisplay: DisplayOption.EMOJI,
+  excludeTags: {
+    note: '#exclude-all-tasks',
+    section: '#exclude-tasks',
+    task: '#exclude'
+  },
   database: {
     tasks: {
       autoincrement: 1,

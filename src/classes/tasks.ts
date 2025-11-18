@@ -52,6 +52,10 @@ export class Tasks {
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
     debug('Processing cache update for ' + cacheUpdate.file.path)
 
+    if (cacheUpdate.cache.tags?.map(x => x.tag).includes(this.plugin.settings.excludeTags.note))
+      // This note is excluded from processing, nothing to do
+      return
+
     const processed: CacheUpdateItem[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
       const res = new Task(this).initFromListItem(item, cacheUpdate, processed)
