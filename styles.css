@@ -35,7 +35,7 @@
     background-color: var(--text-highlight-bg);
 }
 .do-task-inbox-row {
-    background-color: var(--background-modifier-error);
+    background-color: var(--text-selection);
 }
 .gtd-table-checkbox {
     width: 10px;

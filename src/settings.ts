@@ -17,25 +17,25 @@ export enum DisplayOption {
 
 const taskElements: TaskElement[] = [
   {
-    key: 'createdDisplay',
+    key: 'created',
     name: 'Created date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
     emoji: TaskEmoji.CREATED
   },
   {
-    key: 'scheduledDisplay',
+    key: 'scheduled',
     name: 'Scheduled date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
     emoji: TaskEmoji.SCHEDULED
   },
   {
-    key: 'dueDisplay',
+    key: 'due',
     name: 'Due date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
     emoji: TaskEmoji.DUE
   },
   {
-    key: 'completedDisplay',
+    key: 'completed',
     name: 'Completed date',
     dropdownOptions: [DisplayOption.EMOJI, DisplayOption.NONE],
     emoji: TaskEmoji.COMPLETED
@@ -43,40 +43,47 @@ const taskElements: TaskElement[] = [
 ]
 
 export interface NextActionSettings {
-  [key: string]: any
   defaultNote: string;
   archiveNote: string;
   taskBlockPrefix: string;
-  createdDisplay: DisplayOption;
-  scheduledDisplay: DisplayOption;
-  dueDisplay: DisplayOption;
-  completedDisplay: DisplayOption;
+  displayOptions: {
+    created: DisplayOption;
+    scheduled: DisplayOption;
+    due: DisplayOption;
+    completed: DisplayOption;
+    [key: string]: any
+  }
   excludeTags: {
     note: string;
     section: string;
     task: string;
   }
+  masterAppId: string;
   database: {
     tasks: {
       autoincrement: number;
       rows: TaskRow[];
     }
   }
+  [key: string]: any
 }
 
 export const DEFAULT_SETTINGS: NextActionSettings = {
   defaultNote: 'Next Action quick add',
   archiveNote: 'Next Action completed tasks',
   taskBlockPrefix: 'na',
-  createdDisplay: DisplayOption.NONE,
-  scheduledDisplay: DisplayOption.EMOJI,
-  dueDisplay: DisplayOption.EMOJI,
-  completedDisplay: DisplayOption.EMOJI,
+  displayOptions: {
+    created: DisplayOption.NONE,
+    scheduled: DisplayOption.EMOJI,
+    due: DisplayOption.EMOJI,
+    completed: DisplayOption.EMOJI,
+  },
   excludeTags: {
     note: '#exclude-all-tasks',
     section: '#exclude-tasks',
     task: '#exclude'
   },
+  masterAppId: '',
   database: {
     tasks: {
       autoincrement: 1,
@@ -87,12 +94,20 @@ export const DEFAULT_SETTINGS: NextActionSettings = {
 
 export class DoSettingTab extends PluginSettingTab {
   plugin: MyPlugin
+  settings: NextActionSettings
 
   constructor (app: App, plugin: MyPlugin) {
     super(app, plugin)
     this.plugin = plugin
+    this.settings = plugin.settings
 
-
+    // Set the initial master device
+    // If masterAppId is blank but there are existing database rows,
+    // it's because someone has revoked a master device, so we don't
+    // want to automatically set a new one.
+    if (!this.settings.masterAppId && !this.settings.database.tasks.rows.length) {
+      this.settings.masterAppId = this.app.appId
+    }
   }
 
   display (): void {
@@ -135,9 +150,9 @@ export class DoSettingTab extends PluginSettingTab {
               dropdown.addOption(key, prefix + key)
             })
           dropdown
-            .setValue(this.plugin.settings[element.key])
+            .setValue(this.plugin.settings.displayOptions[element.key])
             .onChange(async (value) => {
-              this.plugin.settings[element.key] = value as DisplayOption
+              this.plugin.settings.displayOptions[element.key] = value as DisplayOption
               await this.plugin.saveSettings()
             })
         })
@@ -151,6 +166,32 @@ export class DoSettingTab extends PluginSettingTab {
       .setHeading()
       .setName('Advanced settings')
       .setDesc('Most users will not need to change these settings. Proceed with caution.')
+
+    if (!this.settings.masterAppId) {
+      new Setting(containerEl)
+        .setName('Set as master device')
+        .setDesc('Set this device as the master device.')
+        .addButton(button => button
+          .setButtonText('Set as master device')
+          .setCta()
+          .onClick(async () => {
+            this.settings.masterAppId = this.app.appId
+            await this.plugin.saveSettings()
+            this.display()
+          }))
+    } else {
+      new Setting(containerEl)
+        .setName('Revoke master device')
+        .setDesc('Removes this device as the master device, so you can set a new one.')
+        .addButton(button => button
+          .setButtonText('Revoke master device')
+          .setWarning()
+          .onClick(async () => {
+            this.settings.masterAppId = ''
+            await this.plugin.saveSettings()
+            this.display()
+          }))
+    }
 
     new Setting(containerEl)
       .setName('Task block prefix')

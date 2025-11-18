@@ -2,7 +2,7 @@ import { MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS, type NextActionSettings, DoSettingTab } from './settings'
 import { Tasks } from './classes/tasks'
 import { NEXT_ACTION_VIEW_TYPE, NextActionView } from './views/task-view'
-import { getOrCreateFile } from './functions'
+import { debug, getOrCreateFile } from './functions'
 
 export default class DoPlugin extends Plugin {
   tasks!: Tasks
@@ -76,20 +76,23 @@ export default class DoPlugin extends Plugin {
 
     // Process the cache change queue
     this.cacheChangeInterval = setInterval(() => {
-      this.cacheChangeQueue.forEach(async (cacheItemPath) => {
-        // Only process the update if the view is no longer active, to prevent
-        // issues with the user and the plugin both changing the data
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
-        if (activeView?.file?.path !== cacheItemPath) {
-          const cache = this.app.metadataCache.getCache(cacheItemPath)
-          const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
-          if (cache && file instanceof TFile) {
-            this.cacheChangeQueue.delete(cacheItemPath)
-            const data = await this.app.vault.cachedRead(file)
-            await this.tasks.processTasksFromCacheUpdate({ file, data, cache })
+      // Only the master device can make changes this way
+      if (this.isMaster()) {
+        this.cacheChangeQueue.forEach(async (cacheItemPath) => {
+          // Only process the update if the view is no longer active, to prevent
+          // issues with the user and the plugin both changing the data
+          const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
+          if (!activeView || activeView.file?.path !== cacheItemPath) {
+            const cache = this.app.metadataCache.getCache(cacheItemPath)
+            const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
+            if (cache && file instanceof TFile) {
+              this.cacheChangeQueue.delete(cacheItemPath)
+              const data = await this.app.vault.cachedRead(file)
+              await this.tasks.processTasksFromCacheUpdate({ file, data, cache })
+            }
           }
-        }
-      })
+        })
+      }
     }, 2000)
 
     // Notify the view when it is visible
@@ -108,7 +111,24 @@ export default class DoPlugin extends Plugin {
   }
 
   async saveSettings () {
-    await this.saveData(this.settings)
+    /*
+      Only the master device can make changes to the data.json, to prevent issues
+      with two devices modifying copies of the database and causing lost data.
+
+      The master device can be revoked from inside the Settings page,
+      and once that data is synced, a new device can be set as master.
+
+      Since not everyone will be using Obsidian Sync, I can't check the
+      status of sync.instance either. If two devices are modifying files,
+      they can get into a race condition where each is updating tasks
+      then syncing the changes, causing the other device to react to the
+      metadataCache change and so on.
+     */
+    if (this.isMaster() || !this.settings.masterAppId) {
+      await this.saveData(this.settings)
+    } else {
+      debug('Not saving settings, as not the master device')
+    }
   }
 
   async activateView () {
@@ -131,4 +151,10 @@ export default class DoPlugin extends Plugin {
     // Reveal the leaf
     if (leaf) workspace.revealLeaf(leaf).then()
   }
+
+  /**
+   * Is the current device the master device
+   * See the explanation in this.saveSettings() for more details
+   */
+  isMaster () { return this.app.appId === this.settings.masterAppId }
 }

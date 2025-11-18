@@ -47,7 +47,6 @@ export class Table<R extends BaseRow> {
     // Set up debounce for database write to disk
     this.saveDb = debounce(async () => {
       dispatchEvent(this.dataChanged)
-      console.log(this.data)
       await this.plugin.saveSettings()
     }, 3000)
   }
