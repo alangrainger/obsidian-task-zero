@@ -1,7 +1,7 @@
 import { Task, type TaskRow, TaskStatus, TaskType } from './task.svelte'
 import DoPlugin from '../main'
 import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
-import { Table } from './table'
+import { Table, Tablename } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
 import { debug, getOrCreateFile, getTFileFromPath } from '../functions'
 import { TaskInputModal } from '../views/task-input-modal'
@@ -32,10 +32,7 @@ export class Tasks {
   constructor (plugin: DoPlugin) {
     this.plugin = plugin
     this.app = plugin.app
-    this.db = new Table<TaskRow>(this.tableName, this.app)
-
-    // Load tasks data from disk
-    this.db.loadDb().then()
+    this.db = new Table<TaskRow>(this.plugin, Tablename.TASKS)
 
     this.debounceQueueUpdate = debounce(() => {
       debug('Processing debounced queue')
@@ -53,8 +50,6 @@ export class Tasks {
   }
 
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
-    if (!this.db.initialised) return
-
     debug('Processing cache update for ' + cacheUpdate.file.path)
 
     const processed: CacheUpdateItem[] = []

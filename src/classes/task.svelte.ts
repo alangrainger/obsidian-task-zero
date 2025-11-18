@@ -192,11 +192,12 @@ export class Task implements TaskRow {
     record = assignExisting(record, existing, parsed)
 
     // If the task is completed AND the database task is also completed,
+    //   OR it doesn't exist in the database at all,
     // return without making any changes. This is so that completed tasks
     // remain truthful to their state as when they were originally ticked off.
     // This allows completed tasks to be archived to a "Completed task" note
     // without causing path etc to update.
-    if (parsed.status === TaskStatus.DONE && existing?.status === TaskStatus.DONE) {
+    if (parsed.status === TaskStatus.DONE && (!existing || existing.status === TaskStatus.DONE)) {
       this.setData(record)
       return this.resultFromInit(false)
     }

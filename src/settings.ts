@@ -1,6 +1,6 @@
 import { App, DropdownComponent, PluginSettingTab, Setting } from 'obsidian'
 import MyPlugin from './main'
-import { TaskEmoji } from './classes/task.svelte'
+import { TaskEmoji, type TaskRow } from './classes/task.svelte'
 
 interface TaskElement {
   key: string
@@ -42,7 +42,7 @@ const taskElements: TaskElement[] = [
   }
 ]
 
-export interface DoPluginSettings {
+export interface NextActionSettings {
   [key: string]: any
   defaultNote: string;
   archiveNote: string;
@@ -51,16 +51,28 @@ export interface DoPluginSettings {
   scheduledDisplay: DisplayOption;
   dueDisplay: DisplayOption;
   completedDisplay: DisplayOption;
+  database: {
+    tasks: {
+      autoincrement: number;
+      rows: TaskRow[];
+    }
+  }
 }
 
-export const DEFAULT_SETTINGS: DoPluginSettings = {
+export const DEFAULT_SETTINGS: NextActionSettings = {
   defaultNote: 'Next Action quick add',
   archiveNote: 'Next Action completed tasks',
   taskBlockPrefix: 'na',
   createdDisplay: DisplayOption.NONE,
   scheduledDisplay: DisplayOption.EMOJI,
   dueDisplay: DisplayOption.EMOJI,
-  completedDisplay: DisplayOption.EMOJI
+  completedDisplay: DisplayOption.EMOJI,
+  database: {
+    tasks: {
+      autoincrement: 1,
+      rows: []
+    }
+  }
 }
 
 export class DoSettingTab extends PluginSettingTab {

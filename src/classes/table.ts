@@ -1,9 +1,12 @@
-import { App, debounce } from 'obsidian'
+import { debounce } from 'obsidian'
 import { TaskChangeEvent } from './tasks'
 import moment from 'moment'
 import { debug } from '../functions'
+import type DoPlugin from '../main'
 
-const PLUGIN_ID = require('../../manifest.json').id
+export enum Tablename {
+  TASKS = 'tasks'
+}
 
 interface BaseRow {
   [key: string]: any
@@ -18,8 +21,9 @@ interface Data<R> {
 }
 
 export class Table<R extends BaseRow> {
-  app: App
+  plugin: DoPlugin
   name: string
+  data: Data<R>
   dataChanged: Event
   initialised = false
 
@@ -28,32 +32,24 @@ export class Table<R extends BaseRow> {
    */
   saveDb: () => void
 
-  private data: Data<R> = {
-    autoincrement: 1,
-    rows: []
-  }
-
-  constructor (name: string, app: App) {
-    this.app = app
+  constructor (plugin: DoPlugin, name: Tablename) {
+    this.plugin = plugin
     this.name = name
     this.dataChanged = new Event(TaskChangeEvent)
 
-    // Set up debounce for database write to disk
-    this.saveDb = debounce(() => {
-      dispatchEvent(this.dataChanged)
-      this.write().then()
-    }, 3000)
-  }
+    // Load data
+    this.data = this.plugin.settings.database[name] as unknown as Data<R>
 
-  import (data: string) {
-    try {
-      this.data = JSON.parse(data)
-      // Double-check the autoincrement
-      const existing = Math.max(...this.data.rows.map(x => x.id)) || 0
-      this.data.autoincrement = Math.max(this.data.autoincrement, existing + 1)
-    } catch (e) {
-      // nothing
-    }
+    // Double-check the autoincrement
+    const existing = Math.max(...this.data.rows.map(x => x.id)) || 0
+    this.data.autoincrement = Math.max(this.data.autoincrement, existing + 1)
+
+    // Set up debounce for database write to disk
+    this.saveDb = debounce(async () => {
+      dispatchEvent(this.dataChanged)
+      console.log(this.data)
+      await this.plugin.saveSettings()
+    }, 3000)
   }
 
   rows () {
@@ -128,49 +124,4 @@ export class Table<R extends BaseRow> {
       this.saveDb()
     }
   }
-
-  private get filename () {
-    return pluginFile(this.app, 'db-' + this.name + '.json')
-  }
-
-  /**
-   * Load table data from disk
-   */
-  async loadDb () {
-    try {
-      if (await this.app.vault.adapter.exists(this.filename)) {
-        const data = await this.app.vault.adapter.read(this.filename)
-        this.data = JSON.parse(data)
-        // Double-check the autoincrement
-        const existing = Math.max(...this.data.rows.map(x => x.id)) || 0
-        this.data.autoincrement = Math.max(this.data.autoincrement, existing + 1)
-      }
-      this.initialised = true
-    } catch (e) {
-      // nothing
-      debug('Database not correctly initialised')
-    }
-  }
-
-  async write () {
-    if (!this.initialised) {
-      debug('Database not correctly initialised')
-      return
-    }
-    // debug('Saving DB file ' + this.filename)
-    const data = JSON.stringify(this.data, null, 2)
-    await this.app.vault.adapter.write(this.filename, data)
-  }
-}
-
-/**
- * Takes the name of a file relative to the plugin's folder, and returns a full vault path
- */
-function pluginFile (app: App, filename: string) {
-  return [
-    app.vault.configDir,
-    'plugins',
-    PLUGIN_ID,
-    filename
-  ].join('/')
 }

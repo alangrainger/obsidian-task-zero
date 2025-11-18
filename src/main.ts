@@ -1,12 +1,12 @@
 import { MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
-import { DEFAULT_SETTINGS, type DoPluginSettings, DoSettingTab } from './settings'
+import { DEFAULT_SETTINGS, type NextActionSettings, DoSettingTab } from './settings'
 import { Tasks } from './classes/tasks'
 import { NEXT_ACTION_VIEW_TYPE, NextActionView } from './views/task-view'
 import { getOrCreateFile } from './functions'
 
 export default class DoPlugin extends Plugin {
   tasks!: Tasks
-  settings!: DoPluginSettings
+  settings!: NextActionSettings
   view!: NextActionView
   cacheChangeQueue = new Set<string>()
   cacheChangeInterval!: NodeJS.Timeout
@@ -16,7 +16,6 @@ export default class DoPlugin extends Plugin {
     await this.loadSettings()
     this.addSettingTab(new DoSettingTab(this.app, this))
 
-    // Init classes
     this.tasks = new Tasks(this)
 
     this.registerView(
