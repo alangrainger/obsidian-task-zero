@@ -15,12 +15,12 @@ export class MarkdownTaskParser {
     this.regex = {
       id: new RegExp(`\\^${this.blockPrefix}(\\d+)\\s*$`),
       status: /^\s*-\s+\[(.)]\s+/,
-      project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})\\s+`),
-      someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})\\s+`),
-      created: /\s+➕\s*(\d{4}-\d{2}-\d{2})\s+/,
-      due: /\s+📅\s*(\d{4}-\d{2}-\d{2})\s+/,
-      scheduled: /\s+⏳\s*(\d{4}-\d{2}-\d{2})\s+/,
-      completed: /\s+✅\s*(\d{4}-\d{2}-\d{2})\s+/
+      project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})[^\w-]`),
+      someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})[^\w-]`),
+      created: /➕\s*(\d{4}-\d{2}-\d{2})/,
+      due: /📅\s*(\d{4}-\d{2}-\d{2})/,
+      scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,
+      completed: /✅\s*(\d{4}-\d{2}-\d{2})/
     } as const
   }
 
@@ -42,11 +42,8 @@ export class MarkdownTaskParser {
     const scheduled = this.getScheduled()
     const completed = this.getCompleted()
 
-    // Remove other icons which shouldn't be in the final task text
-    // This will leave the final task text === this.taskLine.trim()
-    const keepIcons = [TaskEmoji.PROJECT, TaskEmoji.SOMEDAY]
+    // Ensure all icons are removed from the final task line
     Object.values(TaskEmoji)
-      .filter(value => !keepIcons.includes(value as TaskEmoji))
       .forEach(emoji => {
         while (emoji && this.taskLine.includes(emoji)) {
           this.taskLine = this.taskLine.replace(emoji, ' ')
