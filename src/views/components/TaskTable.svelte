@@ -8,12 +8,12 @@
   import type { State } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
   import { debug, fromNow } from '../../functions'
-  import { DoTaskView, type TaskScopes } from '../task-view'
+  import { NextActionView, type TaskScopes } from '../task-view'
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
 
   interface Props {
-    view: DoTaskView
+    view: NextActionView
     plugin: DoPlugin
     scopes: TaskScopes
   }
@@ -136,8 +136,9 @@
   }
 
   function clickRow (id: number, event: MouseEvent) {
-    if (event.target.closest('a')) {
-      if (event.target.href.startsWith('app')) {
+    const target = event.target as HTMLAnchorElement
+    if (target.closest('a')) {
+      if (target.href.startsWith('app')) {
         plugin.app.workspace.openLinkText(event.target.innerText, '')
       }
     } else {
@@ -177,9 +178,9 @@
   onMount(() => {
     // I have no idea why, but refresh() would never actually do anything here
     // unless I put it after a small timeout
-    setTimeout(() => {
-      refresh()
-      state.activeId = state.tasks[0].id
+    setTimeout(async () => {
+      await refresh()
+      state.activeId = state.tasks[0]?.id
     }, 200)
   })
 
@@ -190,7 +191,7 @@
 </script>
 
 <div class="gtd-view">
-    <Sidebar {activeTask} {state} {scopes}/>
+    <Sidebar {activeTask} {state} {scopes} {plugin}/>
     <table class="gtd-table">
         <thead>
         <tr>

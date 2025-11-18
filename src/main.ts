@@ -1,13 +1,15 @@
-import { debounce, MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
+import { MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS, type DoPluginSettings, DoSettingTab } from './settings'
-import { type CacheUpdate, Tasks } from './classes/tasks'
-import { DO_TASK_VIEW_TYPE, DoTaskView } from './views/task-view'
+import { Tasks } from './classes/tasks'
+import { NEXT_ACTION_VIEW_TYPE, NextActionView } from './views/task-view'
 import { getOrCreateFile } from './functions'
 
 export default class DoPlugin extends Plugin {
   tasks!: Tasks
   settings!: DoPluginSettings
-  view!: DoTaskView
+  view!: NextActionView
+  cacheChangeQueue = new Set<string>()
+  cacheChangeInterval!: NodeJS.Timeout
 
   async onload () {
     // Settings
@@ -18,9 +20,9 @@ export default class DoPlugin extends Plugin {
     this.tasks = new Tasks(this)
 
     this.registerView(
-      DO_TASK_VIEW_TYPE,
+      NEXT_ACTION_VIEW_TYPE,
       leaf => {
-        this.view = new DoTaskView(leaf, this)
+        this.view = new NextActionView(leaf, this)
         return this.view
       }
     )
@@ -64,22 +66,36 @@ export default class DoPlugin extends Plugin {
       }
     })
 
-    // Watch for metadata cache changes, but only start processing after no changes in N seconds
-    const cacheChangeDebounce = debounce((cacheUpdate: CacheUpdate) => {
-      this.tasks.processTasksFromCacheUpdate(cacheUpdate)
-    }, 4000, true)
-    this.registerEvent(this.app.metadataCache.on('changed', (file, data, cache) => {
-      cacheChangeDebounce({ file, data, cache })
-    }))
+    // Queue note for update when metadata cache change detected
+    this.registerEvent(this.app.metadataCache.on('changed', file => this.cacheChangeQueue.add(file.path)))
+
+    // Process the cache change queue
+    this.cacheChangeInterval = setInterval(() => {
+      this.cacheChangeQueue.forEach(async (cacheItemPath) => {
+        // Only process the update if the view is no longer active, to prevent
+        // issues with the user and the plugin both changing the data
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
+        if (activeView?.file?.path !== cacheItemPath) {
+          const cache = this.app.metadataCache.getCache(cacheItemPath)
+          const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
+          if (cache && file instanceof TFile) {
+            this.cacheChangeQueue.delete(cacheItemPath)
+            const data = await this.app.vault.cachedRead(file)
+            await this.tasks.processTasksFromCacheUpdate({ file, data, cache })
+          }
+        }
+      })
+    }, 2000)
 
     // Notify the view when it is visible
     this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-      this.view?.table?.setActive(leaf?.view instanceof DoTaskView)
+      this.view?.table?.setActive(leaf?.view instanceof NextActionView)
     }))
   }
 
   onunload () {
     this.view?.close().then()
+    clearInterval(this.cacheChangeInterval)
   }
 
   async loadSettings () {
@@ -95,7 +111,7 @@ export default class DoPlugin extends Plugin {
 
     let leaf: WorkspaceLeaf | null
 
-    const leaves = workspace.getLeavesOfType(DO_TASK_VIEW_TYPE)
+    const leaves = workspace.getLeavesOfType(NEXT_ACTION_VIEW_TYPE)
     if (leaves.length > 0) {
       // A leaf with our view already exists, use that
       leaf = leaves[0]
@@ -103,11 +119,11 @@ export default class DoPlugin extends Plugin {
       // Our view could not be found in the workspace, create a new leaf
       leaf = workspace.getLeaf(true)
       await leaf?.setViewState({
-        type: DO_TASK_VIEW_TYPE,
+        type: NEXT_ACTION_VIEW_TYPE,
         active: true
       })
     }
     // Reveal the leaf
-    if (leaf) workspace.revealLeaf(leaf)
+    if (leaf) workspace.revealLeaf(leaf).then()
   }
 }

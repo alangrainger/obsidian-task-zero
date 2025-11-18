@@ -17,6 +17,7 @@ export class MarkdownTaskParser {
       status: /^\s*-\s+\[(.)]\s+/,
       project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})\\s+`),
       someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})\\s+`),
+      created: /\s+➕\s*(\d{4}-\d{2}-\d{2})\s+/,
       due: /\s+📅\s*(\d{4}-\d{2}-\d{2})\s+/,
       scheduled: /\s+⏳\s*(\d{4}-\d{2}-\d{2})\s+/,
       completed: /\s+✅\s*(\d{4}-\d{2}-\d{2})\s+/
@@ -36,6 +37,7 @@ export class MarkdownTaskParser {
     // Run all functions first, as they remove the matched text from the remaining task text
     const isProject = this.isProject()
     const isSomeday = this.isSomeday()
+    const created = this.getCreated()
     const due = this.getDue()
     const scheduled = this.getScheduled()
     const completed = this.getCompleted()
@@ -53,6 +55,7 @@ export class MarkdownTaskParser {
 
     return {
       type: isSomeday ? TaskType.SOMEDAY : isProject ? TaskType.PROJECT : undefined,
+      created,
       due,
       scheduled,
       completed,
@@ -109,6 +112,10 @@ export class MarkdownTaskParser {
 
   isSomeday () {
     return !!this.getAndRemoveMatch(this.regex.someday)
+  }
+
+  getCreated () {
+    return this.getAndRemoveMatch(this.regex.created)
   }
 
   getDue () {

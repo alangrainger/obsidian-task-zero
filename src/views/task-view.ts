@@ -4,7 +4,7 @@ import type DoTaskPlugin from '../main'
 import { mount, unmount } from 'svelte'
 import { KeymapScope } from '../classes/keymap-scope'
 
-export const DO_TASK_VIEW_TYPE = 'gtd-view'
+export const NEXT_ACTION_VIEW_TYPE = 'next-action-view'
 
 export interface TaskScopes {
   tasklist: KeymapScope
@@ -13,7 +13,7 @@ export interface TaskScopes {
   [key: string]: KeymapScope
 }
 
-export class DoTaskView extends ItemView {
+export class NextActionView extends ItemView {
   plugin: DoTaskPlugin
   table?: ReturnType<typeof Table>
   scopes: TaskScopes
@@ -30,11 +30,11 @@ export class DoTaskView extends ItemView {
   }
 
   getViewType () {
-    return DO_TASK_VIEW_TYPE
+    return NEXT_ACTION_VIEW_TYPE
   }
 
   getDisplayText () {
-    return 'Do Tasks view'
+    return 'Task List'
   }
 
   async onOpen () {

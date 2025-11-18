@@ -68,6 +68,10 @@
 .gtd-sidebar .setting-item {
     display: block;
 }
+.gtd-sidebar .setting-item-name {
+    margin: 0.5em 0;
+    font-weight: bold;
+}
 
 .gtd-sidebar  input {
     width: 100%;

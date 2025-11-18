@@ -157,7 +157,7 @@ export class Table<R extends BaseRow> {
       debug('Database not correctly initialised')
       return
     }
-    debug('Saving DB file ' + this.filename)
+    // debug('Saving DB file ' + this.filename)
     const data = JSON.stringify(this.data, null, 2)
     await this.app.vault.adapter.write(this.filename, data)
   }
