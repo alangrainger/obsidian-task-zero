@@ -115,7 +115,7 @@ export class DoSettingTab extends PluginSettingTab {
 
     containerEl.empty()
 
-    if (!this.plugin.isMaster() && this.settings.masterAppId) {
+    if (!this.plugin.isMaster()) {
       new Setting(containerEl)
         .setHeading()
         .setName('This is not the master device!')
