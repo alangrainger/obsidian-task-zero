@@ -318,11 +318,9 @@ export class Task implements TaskRow {
 
     if (signifiers.includes(this.type)) {
       const key = Object.keys(TaskType).find(key => TaskType[key as keyof typeof TaskType] === this.type) || ''
-      console.log(key)
       if (key === 'WAITING_ON') {
         const displayOptions = this.tasks.plugin.settings.displayOptions
         if (displayOptions.waitingOn === DisplayOption.TAG) {
-          console.log('yes tag')
           return '#' + TaskType.WAITING_ON
         } else if (displayOptions.waitingOn === DisplayOption.EMOJI) {
           return TaskEmoji.WAITING_ON
