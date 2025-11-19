@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting } from 'obsidian'
 import MyPlugin from './main'
 import { TaskEmoji, type TaskRow } from './classes/task.svelte'
 import { debug } from './functions'
+import { FileSuggest } from './views/suggest/file-suggest'
 
 interface TaskElement {
   key: string
@@ -75,6 +76,7 @@ export interface NextActionSettings {
     changeQueue: string[]
   }
   debug: boolean;
+
   [key: string]: any
 }
 
@@ -152,12 +154,15 @@ export class DoSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Archived task note')
       .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
-      .addText(text => text
-        .setValue(this.plugin.settings.archiveNote)
-        .onChange(async (value) => {
-          this.plugin.settings.archiveNote = value || DEFAULT_SETTINGS.archiveNote
-          await this.plugin.saveSettings()
-        }))
+      .addText(text => {
+        text
+          .setValue(this.plugin.settings.archiveNote)
+          .onChange(async (value) => {
+            this.plugin.settings.archiveNote = value || DEFAULT_SETTINGS.archiveNote
+            await this.plugin.saveSettings()
+          })
+        new FileSuggest(this.app, text.inputEl)
+      })
 
     new Setting(containerEl)
       .setHeading()

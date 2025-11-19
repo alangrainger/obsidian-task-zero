@@ -11,6 +11,7 @@
   import { NextActionView, type TaskScopes } from '../task-view'
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
+  import { MoveFileModal } from '../move-file-modal'
 
   interface Props {
     view: NextActionView
@@ -92,6 +93,11 @@
     ['a', [], () => setTaskType(TaskType.NEXT_ACTION)],
     ['s', [], () => setTaskType(TaskType.SOMEDAY)],
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
+    // Move task
+    ['m', [], () => {
+      if (activeTask) new MoveFileModal(plugin, activeTask).open()
+    }],
+    // New task
     ['n', [], () => {
       const project = activeTask.type === TaskType.PROJECT ? activeTask : null
       new TaskInputModal(plugin, project, (taskText) => {
@@ -124,16 +130,24 @@
   }
 
   function setTaskType (type: TaskType) {
-    // const prevType = activeTask.type
-    activeTask.setAs(type)
-    // If someone has changed the type of a task it will change position on the list,
-    // so move to the next task then refresh
-    state.activeId = getRowDown().id
-    refresh()
+    if (type !== activeTask.type) {
+      activeTask.setAs(type)
+      // If someone has changed the type of a task it will change position on the list,
+      // so move to the next task then refresh
+      state.activeId = getRowDown().id
+      refresh()
+    }
   }
 
   export function setActive (isActive: boolean) {
     state.viewIsActive = isActive
+    if (isActive) {
+      // When view becomes active, refresh the list and move the selected line back
+      // to the first task in the list. This is as per GTD - you start at the top
+      // and work down.
+      refresh()
+      state.activeId = state.tasks[0]?.id
+    }
   }
 
   function clickRow (id: number, event: MouseEvent) {

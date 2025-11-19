@@ -123,6 +123,12 @@ export class Tasks {
     return task
   }
 
+  /**
+   * Get all active tasks, i.e.:
+   * - not orphaned
+   * - not completed
+   * - exist in a note
+   */
   getTasks (type?: TaskType) {
     return this.db.rows()
       .filter(row => {
@@ -131,9 +137,7 @@ export class Tasks {
         return typeMatch &&
           !row.orphaned &&                  // Not orphaned
           row.status !== TaskStatus.DONE && // Not completed
-          row.path &&                       // Is associated with a note
-          (!row.scheduled || moment(row.scheduled) // Is not scheduled for the future
-            .isSameOrBefore(moment(), 'day'))
+          row.path                          // Is associated with a note
       })
       .map(row => new Task(this).initFromRow(row).task)
       // Sort by created date - oldest task first
@@ -145,6 +149,10 @@ export class Tasks {
    */
   getTasklist () {
     const allTasks = this.getTasks()
+      .filter(task =>
+        // Is not scheduled for the future
+        (!task.scheduled || moment(task.scheduled).isSameOrBefore(moment(), 'day')))
+
     const tasks = allTasks.filter(task => task.isDue)
       // Inbox tasks
       .concat(allTasks.filter(task => task.type === TaskType.INBOX))

@@ -11,6 +11,9 @@
 	"keywords": [],
 	"author": "Alan Grainger",
 	"license": "MIT",
+	"dependencies": {
+		"@popperjs/core": "2.11.5"
+	},
 	"devDependencies": {
 		"@tsconfig/svelte": "^5.0.4",
 		"@types/node": "^16.11.6",
