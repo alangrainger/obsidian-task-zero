@@ -144,24 +144,27 @@ export class DoSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Default task note')
       .setDesc('The note that will be used to store tasks when creating from Quick Add.')
-      .addText(text => text
-        .setValue(this.plugin.settings.defaultNote)
-        .onChange(async (value) => {
-          this.plugin.settings.defaultNote = value || DEFAULT_SETTINGS.defaultNote
-          await this.plugin.saveSettings()
-        }))
+      .addText(text => {
+        new FileSuggest(this.app, text.inputEl)
+        text
+          .setValue(this.plugin.settings.defaultNote)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultNote = value || DEFAULT_SETTINGS.defaultNote
+            await this.plugin.saveSettings()
+          })
+      })
 
     new Setting(containerEl)
       .setName('Archived task note')
       .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
       .addText(text => {
+        new FileSuggest(this.app, text.inputEl)
         text
           .setValue(this.plugin.settings.archiveNote)
           .onChange(async (value) => {
             this.plugin.settings.archiveNote = value || DEFAULT_SETTINGS.archiveNote
             await this.plugin.saveSettings()
           })
-        new FileSuggest(this.app, text.inputEl)
       })
 
     new Setting(containerEl)

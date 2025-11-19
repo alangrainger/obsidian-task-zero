@@ -248,12 +248,17 @@ export class Task implements TaskRow {
         // Ensure the root parent is in the 'updated' list
         const rootParentItem = previous.find(x => x.task.id === rootParent.id)
         if (rootParentItem) rootParentItem.hasChanges = true
-        // Check the sequence. The first available sub-task should be a Next Action,
-        // and the rest should be Dependent
+        // Check all the previously processed tasks that share this rootParent.
+        // The first available sub-task should be active and the rest should be Dependent
         if (previous.find(prev => ancestors
           .map(x => x.id)
-          .includes(prev.task.parent) && !prev.task.isCompleted))
+          .includes(prev.task.parent) && !prev.task.isCompleted)) {
           record.type = TaskType.DEPENDENT
+        } else if (record.type === TaskType.DEPENDENT) {
+          // If it's the first task in the sequence, make sure it's not "Dependent".
+          // It might however be SOMEDAY or WAITING_ON etc.
+          record.type = TaskType.NEXT_ACTION
+        }
       }
     } else {
       // The note is the source-of-truth, so if the task has been re-ordered and there's
