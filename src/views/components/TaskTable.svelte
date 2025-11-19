@@ -140,7 +140,7 @@
     const target = event.target as HTMLAnchorElement
     if (target.closest('a')) {
       if (target.href.startsWith('app')) {
-        plugin.app.workspace.openLinkText(event.target.innerText, '')
+        plugin.app.workspace.openLinkText(target.innerText, '')
       }
     } else {
       if (state.activeId === id) {
@@ -180,6 +180,9 @@
 
   // Update tasks list when tasks DB changes
   dbEvents.on(DatabaseEvent.TasksExternalChange, refresh)
+  dbEvents.on(DatabaseEvent.TasksChanged, () => {
+    if (!plugin.userActivity.isActive()) refresh()
+  })
 
   onMount(() => {
     // I have no idea why, but refresh() would never actually do anything here
@@ -192,6 +195,9 @@
 
   onDestroy(() => {
     dbEvents.off(DatabaseEvent.TasksExternalChange, refresh)
+    dbEvents.off(DatabaseEvent.TasksChanged, () => {
+      if (!plugin.userActivity.isActive()) refresh()
+    })
     view.disableAllScopes()
   })
 </script>

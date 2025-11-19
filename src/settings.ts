@@ -203,10 +203,10 @@ export class DoSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings()
             this.display()
           }))
-    } else if (this.plugin.isMaster()) {
+    } else {
       new Setting(containerEl)
         .setName('Revoke master device')
-        .setDesc('Removes this device as the master device, so you can set a new one.')
+        .setDesc('Removes the current master device, so you can set a new one.')
         .addButton(button => button
           .setButtonText('Revoke master device')
           .setWarning()

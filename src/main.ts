@@ -98,9 +98,7 @@ export default class DoPlugin extends Plugin {
     /*
       Only the master device can make changes to the data.json, to prevent issues
       with two devices modifying copies of the database and causing lost data.
-
-      The master device can be revoked from inside the Settings page,
-      and once that data is synced, a new device can be set as master.
+      The master device can be revoked from inside the Settings page.
 
       Since not everyone will be using Obsidian Sync, I can't check the
       status of sync.instance either. If two devices are modifying files,

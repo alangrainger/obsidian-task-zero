@@ -1,9 +1,10 @@
-import { Component, type ListItemCache, MarkdownRenderer } from 'obsidian'
+import { type App, Component, type ListItemCache, MarkdownRenderer } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
 import { assignExisting, debug, getTFileFromPath } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
 import moment from 'moment'
 import { DisplayOption } from '../settings'
+import type DoPlugin from '../main'
 
 export enum TaskStatus {
   TODO = ' ',
@@ -60,6 +61,8 @@ export class Task implements TaskRow {
   [key: string]: any
 
   tasks: Tasks
+  app: App
+  plugin: DoPlugin
 
   id = 0
   status = $state(TaskStatus.TODO)
@@ -97,7 +100,9 @@ export class Task implements TaskRow {
 
   constructor (tasks: Tasks) {
     this.tasks = tasks
-    this.markdownTaskParser = new MarkdownTaskParser(tasks.plugin)
+    this.app = tasks.app
+    this.plugin = tasks.plugin
+    this.markdownTaskParser = new MarkdownTaskParser(this.plugin)
   }
 
   reset () {
@@ -398,6 +403,33 @@ export class Task implements TaskRow {
 
     // Queue the task for update in the original markdown note
     this.tasks.addTaskToUpdateQueue(this.id)
+  }
+
+  /**
+   * Move a task to the specified note.
+   * @param toPath - The note to move to
+   * @param beforeTask - (optional) Move it before the task with this ID
+   * @param afterTask - (optional) Move it after the task with this ID
+   */
+  async move (toPath: string, beforeTask?: number, afterTask?: number) {
+    // Remove the task from its current note
+    const currentFile = getTFileFromPath(this.app, this.path)
+    if (!currentFile) return
+    await this.app.vault.process(currentFile, data => {
+      const lines = data.split('\n')
+      const index = lines.findIndex(line => line.endsWith(` ^${this.tasks.blockPrefix}${this.id}`))
+      if (index !== -1) lines.splice(index, 1)
+      return lines.join('\n')
+    })
+    // Add task to new note
+    const newFile = getTFileFromPath(this.app, toPath)
+    if (!newFile) return
+    await this.app.vault.process(newFile, data => {
+      if (!beforeTask && !afterTask) {
+        data = data.trimEnd() + '\n' + this.generateMarkdownTask() + '\n'
+      }
+      return data
+    })
   }
 
   async renderMarkdown () {

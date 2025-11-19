@@ -34,13 +34,12 @@
 
 {#if state.sidebar.open && activeTask}
     <aside transition:slide={{ duration: 300, axis: 'x' }} class="gtd-sidebar">
-        <!-- Sidebar content -->
+        {@html activeTask.renderedMarkdown}
         <div class="setting-item">
             <div class="setting-item-name">Task</div>
             <textarea bind:this={state.sidebar.fields.text} spellcheck="false"
                       bind:value={activeTask.text}
                       oninput={() => activeTask.update()}></textarea>
-            {@html activeTask.renderedMarkdown}
         </div>
         <div class="setting-item">
             <div class="setting-item-name">Scheduled</div>
