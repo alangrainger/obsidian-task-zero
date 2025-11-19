@@ -105,7 +105,7 @@ export class Task implements TaskRow {
   }
 
   valid () {
-    return !!this.id
+    return !!this.id || !this.text.trim()
   }
 
   getData (): TaskRow {
@@ -207,6 +207,9 @@ export class Task implements TaskRow {
     // Overwrite the base record with database-data (if any), then parsed data
     record = assignExisting(record, existing, parsed)
 
+    // Does the task contain some text?
+    if (!record.text.trim()) return this.resultFromInit(false)
+
     if (parsed.status === TaskStatus.DONE && (!existing || existing.status === TaskStatus.DONE)) {
       // If the task is completed AND the database task is also completed,
       //   OR it doesn't exist in the database at all,
@@ -245,7 +248,7 @@ export class Task implements TaskRow {
         if (previous.find(prev => ancestors
           .map(x => x.id)
           .includes(prev.task.parent) && !prev.task.isCompleted))
-          record.type =  TaskType.DEPENDENT
+          record.type = TaskType.DEPENDENT
       }
     } else {
       // The note is the source-of-truth, so if the task has been re-ordered and there's

@@ -150,10 +150,10 @@ export class MarkdownTaskParser {
       // Tomorrow
       return moment().add(1, 'day').format(DATE_FORMAT)
     } else {
-      // The next occurrence of this day - e.g. $tuesday
+      // The next occurrence of this day - e.g. @tuesday
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
       for (let i = 0; i < days.length; i++) {
-        const match = this.getAndRemoveMatch(new RegExp(`(\\$${days[i]})`))
+        const match = this.getAndRemoveMatch(new RegExp(`(@${days[i]})`))
         if (match) {
           const day = moment().day(i)
           if (day.isSameOrBefore(moment(), 'day')) day.add(7, 'days')

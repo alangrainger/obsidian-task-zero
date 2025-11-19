@@ -1,4 +1,4 @@
-import { App, DropdownComponent, PluginSettingTab, Setting } from 'obsidian'
+import { App, PluginSettingTab, Setting } from 'obsidian'
 import MyPlugin from './main'
 import { TaskEmoji, type TaskRow } from './classes/task.svelte'
 import { debug } from './functions'
@@ -71,7 +71,8 @@ export interface NextActionSettings {
     tasks: {
       autoincrement: number;
       rows: TaskRow[];
-    }
+    },
+    changeQueue: string[]
   }
   debug: boolean;
   [key: string]: any
@@ -98,7 +99,8 @@ export const DEFAULT_SETTINGS: NextActionSettings = {
     tasks: {
       autoincrement: 1,
       rows: []
-    }
+    },
+    changeQueue: []
   },
   debug: false
 }
@@ -236,9 +238,5 @@ export class DoSettingTab extends PluginSettingTab {
           debug.enabled = value
           await this.plugin.saveSettings()
         }))
-  }
-
-  addDisplayOptions (el: DropdownComponent, options: string[]) {
-    options.forEach(key => el.addOption(key, key))
   }
 }
