@@ -1,8 +1,10 @@
 import type { Task } from '../classes/task.svelte'
 
 export interface State {
-  activeId: number;
   tasks: Task[];
+  activeId: number;
+  tabs: Tab[],
+  activeTab: string;
   sidebar: {
     open: boolean;
     fields: {
@@ -10,4 +12,9 @@ export interface State {
     }
   }
   viewIsActive: boolean;
+}
+
+export interface Tab {
+  id: string,
+  label: string
 }

@@ -27,8 +27,10 @@
   }: Props = $props()
 
   let state: State = $state({
-    activeId: 0,
     tasks: [],
+    activeId: 0,
+    tabs: [],
+    activeTab: 'tasklist',
     sidebar: {
       open: false,
       fields: {
@@ -96,7 +98,9 @@
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     // Move task
     ['m', [], () => { if (activeTask) new MoveToProjectModal(plugin, activeTask).open() }],
-    ['n', [], newTask]
+    ['n', [], newTask],
+    ['1', ['Alt'], () => state.activeTab = 'tasklist'],
+    ['2', ['Alt'], () => state.activeTab = 'someday'],
   ])
 
   /**
@@ -104,7 +108,30 @@
    */
   export async function refresh () {
     debug('Refreshing task list')
-    const tasks = plugin.tasks.getTasklist()
+    state.tabs = [
+      {
+        id: 'tasklist',
+        label: '✅ Tasks',
+      },
+      {
+        id: 'someday',
+        label: '💤 Someday',
+      },
+      {
+        id: 'work',
+        label: '💼 Work',
+      },
+      {
+        id: 'home',
+        label: '🏠 Home',
+      }
+    ]
+    let tasks = []
+    if (state.activeTab === 'someday') {
+      tasks = plugin.tasks.getTasks(TaskType.SOMEDAY)
+    } else {
+      tasks = plugin.tasks.getTasklist()
+    }
     await Promise.all(tasks.map(async task => await task.renderMarkdown()))
     state.tasks = tasks
   }
@@ -199,6 +226,24 @@
   })
 
   onMount(() => {
+    state.tabs = [
+      {
+        id: 'tasklist',
+        label: '✅ Tasks',
+      },
+      {
+        id: 'someday',
+        label: '💤 Someday',
+      },
+      {
+        id: 'work',
+        label: '💼 Work',
+      },
+      {
+        id: 'home',
+        label: '🏠 Home',
+      }
+    ]
     // I have no idea why, but refresh() would never actually do anything here
     // unless I put it after a small timeout
     setTimeout(async () => {
@@ -218,7 +263,7 @@
 
 <div class="gtd-view">
     <Sidebar {activeTask} {state} {scopes} {plugin}/>
-    <Tabs/>
+    <Tabs {state}/>
     <table class="gtd-table">
         <!--<thead>
         <tr>

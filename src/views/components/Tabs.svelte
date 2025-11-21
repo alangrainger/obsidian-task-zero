@@ -1,34 +1,18 @@
 <script lang="ts">
   import Tab from './Tab.svelte'
+  import type { State } from '../view-types'
 
-  let tabs = [
-    {
-      label: '✅ Tasks',
-      icon: 'briefcase',
-      isActive: false
-    },
-    {
-      label: '💤 Someday',
-      icon: 'briefcase',
-      isActive: false
-    },
-    {
-      label: '💼 Work',
-      icon: 'briefcase',
-      isActive: true
-    },
-    {
-      label: '🏠 Home',
-      icon: 'house',
-      isActive: false
-    }
-  ]
+  interface Props {
+    state: State
+  }
+
+  let { state }: Props = $props()
 </script>
 
 <div class="workspace-tab-header-container">
     <div class="workspace-tab-header-container-inner">
-        {#each tabs as tab}
-            <Tab label={tab.label} icon={tab.icon} isActive={tab.isActive}/>
+        {#each state.tabs as tab, index}
+            <Tab {state} {tab} tabIndex={index}/>
         {/each}
     </div>
 </div>
