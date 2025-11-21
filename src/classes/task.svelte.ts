@@ -98,6 +98,10 @@ export class Task implements TaskRow {
     }
   }
 
+  get blockPrefix () {
+    return this.tasks.blockPrefix
+  }
+
   constructor (tasks: Tasks) {
     this.tasks = tasks
     this.app = tasks.app
@@ -456,6 +460,12 @@ export class Task implements TaskRow {
     })
   }
 
+  async moveToProject (project: Task) {
+    const projectPath = project.path
+    if (!projectPath) return
+    await this.move(projectPath)
+  }
+
   async renderMarkdown () {
     const el = document.createElement('div')
     await MarkdownRenderer.render(this.tasks.app, this.text, el, '', this.markdownComponent)
@@ -480,7 +490,7 @@ export class Task implements TaskRow {
     return ancestors.reverse()
   }
 
-  get descendants (): Task[] {
+  get children (): Task[] {
     const tasks = this.tasks.db.rows() // Get all tasks
 
     // Recursive function to get descendants
@@ -506,7 +516,7 @@ export class Task implements TaskRow {
    */
   async addSubtask (newTaskText: string, type?: TaskType) {
     // Get the position in the note to insert the new task
-    const descendants = this.descendants
+    const descendants = this.children
     const line = (descendants.length ? descendants[descendants.length - 1].line : this.line) + 1
 
     // Create the new subtask

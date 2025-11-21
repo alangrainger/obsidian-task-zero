@@ -1,27 +1,38 @@
-import { TextInputSuggest } from './suggest'
 import DoPlugin from '../../main'
-import { Tasks } from '../../classes/tasks'
 import type { Task } from '../../classes/task.svelte'
+import { AbstractInputSuggest } from 'obsidian'
 
-export class TaskSuggest extends TextInputSuggest<Task> {
+type TaskSuggestProps = {
   plugin: DoPlugin
-  tasks: Tasks
-  path: string
+  inputEl: HTMLInputElement
+  filter: (task: Task) => boolean
+  sort: (a: Task, b: Task) => number
+  onSelect: (selectedTask: Task) => any
+}
 
-  constructor (plugin: DoPlugin, inputEl: HTMLInputElement, path: string) {
-    super(plugin.app, inputEl)
-    this.plugin = plugin
-    this.tasks = plugin.tasks
-    this.path = path
+/**
+ * After selecting a task, the task ID will be set in the inputEl's dataset, as
+ * inputEl.dataset.taskId
+ */
+export class TaskSuggest extends AbstractInputSuggest<Task> {
+  plugin: DoPlugin
+  tasks: Task[]
+  inputEl: HTMLInputElement
+  callback: (selectedTask: Task) => any
+
+  constructor (taskSuggestProps: TaskSuggestProps) {
+    super(taskSuggestProps.plugin.app, taskSuggestProps.inputEl)
+    this.plugin = taskSuggestProps.plugin
+    this.inputEl = taskSuggestProps.inputEl
+    this.callback = taskSuggestProps.onSelect
+    this.tasks = this.plugin.tasks.getTasks()
+      .filter(taskSuggestProps.filter)
+      .sort(taskSuggestProps.sort)
   }
 
   getSuggestions (inputStr: string): Task[] {
     const lowerCaseInputStr = inputStr.toLowerCase()
-    const tasks = this.tasks.getTasks()
-      .filter(task => task.path === this.path)
-      .sort((a, b) => a.line - b.line)
-
-    return tasks.filter(task => task.text.toLowerCase().contains(lowerCaseInputStr))
+    return this.tasks.filter(task => task.text.toLowerCase().contains(lowerCaseInputStr))
   }
 
   renderSuggestion (task: Task, el: HTMLElement): void {
@@ -29,9 +40,8 @@ export class TaskSuggest extends TextInputSuggest<Task> {
   }
 
   selectSuggestion (task: Task): void {
-    this.inputEl.dataset.taskId = task.id.toString()
-    this.inputEl.value = task.text
-    this.inputEl.trigger('input')
+    this.callback(task)
+    this.setValue(task.text)
     this.close()
   }
 }

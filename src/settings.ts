@@ -232,6 +232,7 @@ export class DoSettingTab extends PluginSettingTab {
         .setPlaceholder('do')
         .setValue(this.plugin.settings.taskBlockPrefix)
         .onChange(async (value) => {
+          value = value.replace(/[^A-Za-z]/g, '')
           this.plugin.settings.taskBlockPrefix = value || DEFAULT_SETTINGS.taskBlockPrefix
           await this.plugin.saveSettings()
         }))

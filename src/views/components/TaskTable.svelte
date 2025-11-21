@@ -11,7 +11,7 @@
   import { NextActionView, type TaskScopes } from '../task-view'
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
-  import { MoveFileModal } from '../move-file-modal'
+  import { MoveToProjectModal } from '../move-to-project-modal'
 
   interface Props {
     view: NextActionView
@@ -94,7 +94,7 @@
     ['s', [], () => setTaskType(TaskType.SOMEDAY)],
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     // Move task
-    ['m', [], () => { if (activeTask) new MoveFileModal(plugin, activeTask).open()}],
+    ['m', [], () => { if (activeTask) new MoveToProjectModal(plugin, activeTask).open() }],
     ['n', [], newTask]
   ])
 
