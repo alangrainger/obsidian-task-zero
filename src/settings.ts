@@ -3,6 +3,7 @@ import MyPlugin from './main'
 import { TaskEmoji, type TaskRow } from './classes/task.svelte'
 import { debug } from './functions'
 import { FileSuggest } from './views/suggest/file-suggest'
+import type { Tab } from './views/view-types'
 
 interface TaskElement {
   key: string
@@ -50,6 +51,24 @@ const taskElements: TaskElement[] = [
   }
 ]
 
+const tabSettings = [
+  {
+    key: 'label',
+    name: 'Title',
+    placeholder: '🏠 Home'
+  },
+  {
+    key: 'tag',
+    name: 'Tag to match on',
+    placeholder: '#context/home'
+  },
+  {
+    key: 'icon',
+    name: '(Optional) Lucide.dev icon',
+    placeholder: 'house'
+  }
+]
+
 export interface NextActionSettings {
   defaultNote: string;
   archiveNote: string;
@@ -67,6 +86,7 @@ export interface NextActionSettings {
     section: string;
     task: string;
   }
+  tasklistTabs: Tab[];
   masterAppId: string;
   database: {
     tasks: {
@@ -96,6 +116,7 @@ export const DEFAULT_SETTINGS: NextActionSettings = {
     section: '#exclude-tasks',
     task: '#exclude'
   },
+  tasklistTabs: [],
   masterAppId: '',
   database: {
     tasks: {
@@ -166,6 +187,51 @@ export class DoSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings()
           })
       })
+
+    new Setting(containerEl)
+      .setHeading()
+      .setName('Tasklist Tabs')
+      .addButton(button => button
+        .setButtonText('Add another tab')
+        .setCta()
+        .onClick(() => {
+          this.settings.tasklistTabs.push({ id: '', label: '' })
+          this.display()
+        }))
+
+    new Setting(containerEl)
+      .setName('Main tasklist')
+      .setDesc('This is a built-in tab and cannot be removed.')
+
+    this.settings.tasklistTabs.forEach((tab, i) => {
+      new Setting(containerEl)
+        .setName(`Tab #${i + 2} settings:`)
+        .addButton(button => button
+          .setButtonText(`️Delete tab #${i + 2}`)
+          .setWarning()
+          .onClick(() => {
+            this.settings.tasklistTabs.splice(i, 1)
+            this.display()
+          }))
+      for (const info of tabSettings) {
+        new Setting(containerEl)
+          .setName(info.name)
+          .addText(text => {
+            text
+              .setPlaceholder(info.placeholder)
+              .setValue(tab[info.key] || '')
+              .onChange(async (value) => {
+                tab[info.key] = value
+                await this.plugin.saveSettings()
+              })
+          })
+          .setClass('next-action-tab-setting')
+      }
+    })
+
+    new Setting(containerEl)
+      .setName('💤 Someday tasks')
+      .setDesc('This is a built-in tab and cannot be removed.')
 
     new Setting(containerEl)
       .setHeading()

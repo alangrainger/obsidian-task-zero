@@ -15,6 +15,14 @@ export interface State {
 }
 
 export interface Tab {
-  id: string,
-  label: string
+  [key: string]: any;
+  label: string,
+  tag?: string,
+  icon?: string,
+  filter?: (task: Task) => boolean
+}
+
+export enum DefaultTabs {
+  TASKS = '✅ Tasks',
+  SOMEDAY = '💤 Someday'
 }

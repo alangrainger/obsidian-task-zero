@@ -455,7 +455,6 @@ export class Task implements TaskRow {
         // Append task to end of the note
         data = data.trimEnd() + '\n' + this.generateMarkdownTask() + '\n'
       }
-      console.log(data)
       return data
     })
   }

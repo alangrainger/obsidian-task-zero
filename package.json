@@ -1,6 +1,6 @@
 {
 	"name": "next-action",
-	"version": "0.0.17",
+	"version": "0.0.18",
 	"description": "An opinionated GTD-style task management system for Obsidian",
 	"main": "main.js",
 	"scripts": {

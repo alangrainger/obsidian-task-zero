@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { State, Tab } from '../view-types'
+  import { setIcon } from 'obsidian'
 
   interface Props {
     state: State
@@ -8,18 +9,22 @@
   }
 
   let { state, tab, tabIndex }: Props = $props()
-  let isActive = $derived(state.activeTab === tab.id)
+  let isActive = $derived(state.activeTab === tab.label)
+  let iconEl: HTMLElement
+  $effect(() => {
+    if (tab.icon) setIcon(iconEl, tab.icon)
+  })
 </script>
 
 <div
-        onclick={() => state.activeTab = tab.id}
-        onkeydown={() => state.activeTab = tab.id}
+        onclick={() => state.activeTab = tab.label}
+        onkeydown={() => state.activeTab = tab.label}
         class:is-active={isActive}
         class:mod-active={isActive}
         class="workspace-tab-header"
         aria-label={tab.label} role="tab" tabindex={tabIndex}>
     <div class="workspace-tab-header-inner">
-        <!--        <div bind:this={iconEl} class="workspace-tab-header-inner-icon"></div>-->
+        <div bind:this={iconEl} class="workspace-tab-header-inner-icon"></div>
         <div class="workspace-tab-header-inner-title">{tab.label}</div>
     </div>
 </div>

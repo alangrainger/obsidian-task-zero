@@ -5,7 +5,7 @@
 
   import { onDestroy, onMount, tick } from 'svelte'
   import type DoPlugin from '../../main'
-  import type { State } from '../view-types'
+  import { DefaultTabs, type State, type Tab } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
   import { debug, fromNow } from '../../functions'
   import { NextActionView, type TaskScopes } from '../task-view'
@@ -30,7 +30,7 @@
     tasks: [],
     activeId: 0,
     tabs: [],
-    activeTab: 'tasklist',
+    activeTab: DefaultTabs.TASKS,
     sidebar: {
       open: false,
       fields: {
@@ -98,42 +98,57 @@
     ['w', [], () => setTaskType(TaskType.WAITING_ON)],
     // Move task
     ['m', [], () => { if (activeTask) new MoveToProjectModal(plugin, activeTask).open() }],
-    ['n', [], newTask],
-    ['1', ['Alt'], () => state.activeTab = 'tasklist'],
-    ['2', ['Alt'], () => state.activeTab = 'someday'],
+    ['n', [], newTask]
   ])
+
+  // Add hotkeys for Alt + 1-9 for switching tabs
+  Array.from({ length: 9 }, (_, index) => index + 1)
+    .forEach(num => scopes.tasklist.addHotkey(num.toString(), ['Alt'], () => switchTab(num)))
 
   /**
    * Refresh the list of tasks
    */
   export async function refresh () {
     debug('Refreshing task list')
-    state.tabs = [
+
+    // Create the standard tabs
+    const tabs = [{
+      label: DefaultTabs.TASKS,
+      filter: () => true
+    },
       {
-        id: 'tasklist',
-        label: '✅ Tasks',
-      },
-      {
-        id: 'someday',
-        label: '💤 Someday',
-      },
-      {
-        id: 'work',
-        label: '💼 Work',
-      },
-      {
-        id: 'home',
-        label: '🏠 Home',
-      }
-    ]
+        label: DefaultTabs.SOMEDAY,
+        filter: (task: Task) => task.type === TaskType.SOMEDAY
+      }] as Tab[]
+
+    // Add in the user's custom tabs
+    tabs.splice(1, 0, ...plugin.settings.tasklistTabs
+      .filter(x => x.label && x.tag)
+      .map(x => ({
+        label: x.label,
+        filter: (task: Task) => task.text.includes(x.tag.replace(/#/g, ''))
+      })))
+    state.tabs = tabs
+
+    // Create the task lists
     let tasks = []
-    if (state.activeTab === 'someday') {
+    // Filter using the built-in or custom user function
+    if (state.activeTab === DefaultTabs.SOMEDAY) {
       tasks = plugin.tasks.getTasks(TaskType.SOMEDAY)
+    } else if (state.activeTab === DefaultTabs.TASKS) {
+      tasks = plugin.tasks.getTasklist()
     } else {
       tasks = plugin.tasks.getTasklist()
+        .filter(tabs.find(x => x.label === state.activeTab)?.filter || (() => true))
     }
+
     await Promise.all(tasks.map(async task => await task.renderMarkdown()))
     state.tasks = tasks
+  }
+
+  function switchTab (index: number) {
+    if (index < 1 || index > state.tabs.length) return
+    state.activeTab = state.tabs[index - 1].label
   }
 
   function setTaskType (type: TaskType) {

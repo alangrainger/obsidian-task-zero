@@ -101,3 +101,8 @@
     margin-block-start: 0;
     margin-block-end: 0;
 }
+
+.next-action-tab-setting {
+    border: none;
+    padding: 0 0 0.3em 0;
+}
