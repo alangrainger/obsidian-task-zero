@@ -12,6 +12,7 @@
   import { Task, TaskEmoji, TaskType } from '../../classes/task.svelte'
   import { TaskInputModal } from '../task-input-modal'
   import { MoveToProjectModal } from '../move-to-project-modal'
+  import Tabs from './Tabs.svelte'
 
   interface Props {
     view: NextActionView
@@ -217,8 +218,9 @@
 
 <div class="gtd-view">
     <Sidebar {activeTask} {state} {scopes} {plugin}/>
+    <Tabs/>
     <table class="gtd-table">
-        <thead>
+        <!--<thead>
         <tr>
             <th></th>
             <th></th>
@@ -229,7 +231,7 @@
             <th>Due</th>
             <th></th>
         </tr>
-        </thead>
+        </thead>-->
         <tbody>
         {#each state.tasks as task}
             <tr

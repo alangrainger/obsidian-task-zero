@@ -154,6 +154,12 @@ export class Tasks {
         (!task.scheduled || moment(task.scheduled).isSameOrBefore(moment(), 'day')))
 
     const tasks = allTasks.filter(task => task.isDue)
+      // Get due tasks, and order by earliest date first
+      .sort((a, b) => {
+        const dateA = [a.due, a.scheduled].filter(Boolean).sort()[0]
+        const dateB = [b.due, b.scheduled].filter(Boolean).sort()[0]
+        return dateA.localeCompare(dateB)
+      })
       // Inbox tasks
       .concat(allTasks.filter(task => task.type === TaskType.INBOX))
       // Projects that have no next action (i.e. no sub-tasks)
