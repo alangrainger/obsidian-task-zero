@@ -1,6 +1,13 @@
-import { AbstractInputSuggest, TAbstractFile, TFile, TFolder } from 'obsidian'
+import { AbstractInputSuggest, type App, TAbstractFile, TFile, TFolder } from 'obsidian'
 
 export class FileSuggest extends AbstractInputSuggest<TFile> {
+  callback: (file: TFile) => void
+
+  constructor (app: App, inputEl: HTMLInputElement, callback: (file: TFile) => void) {
+    super(app, inputEl)
+    this.callback = callback
+  }
+
   getSuggestions (inputStr: string): TFile[] {
     const abstractFiles = this.app.vault.getAllLoadedFiles()
     const files: TFile[] = []
@@ -25,6 +32,7 @@ export class FileSuggest extends AbstractInputSuggest<TFile> {
 
   selectSuggestion (file: TFile): void {
     this.setValue(file.path)
+    this.callback(file)
     this.close()
   }
 }

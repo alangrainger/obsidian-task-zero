@@ -24,9 +24,8 @@ export class TaskInputModal extends Modal {
       .setDesc(this.project ? 'Project has no Next Actions - time to add one.' : `Adding task to the default note: "${this.plugin.settings.defaultNote}"`)
 
     new Setting(contentEl)
-      .setName('Task text')
-      .addText(text => text
-        .setPlaceholder('')
+      .addTextArea(text => text
+        .setPlaceholder('Start typing your task here...')
         .onChange(value => {
           this.taskText = value
         })
@@ -36,6 +35,7 @@ export class TaskInputModal extends Modal {
             this.submit()
           }
         }))
+      .setClass('next-action-task-textarea')
 
     new Setting(contentEl)
       .addButton(btn => btn

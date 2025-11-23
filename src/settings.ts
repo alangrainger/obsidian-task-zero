@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian'
+import { App, PluginSettingTab, Setting, type TFile } from 'obsidian'
 import MyPlugin from './main'
 import { TaskEmoji, type TaskRow } from './classes/task.svelte'
 import { debug } from './functions'
@@ -166,26 +166,22 @@ export class DoSettingTab extends PluginSettingTab {
       .setName('Default task note')
       .setDesc('The note that will be used to store tasks when creating from Quick Add.')
       .addText(text => {
-        new FileSuggest(this.app, text.inputEl)
-        text
-          .setValue(this.plugin.settings.defaultNote)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultNote = value || DEFAULT_SETTINGS.defaultNote
-            await this.plugin.saveSettings()
-          })
+        new FileSuggest(this.app, text.inputEl, async (file: TFile) => {
+          this.plugin.settings.defaultNote = file.path
+          await this.plugin.saveSettings()
+        })
+        text.setValue(this.plugin.settings.defaultNote)
       })
 
     new Setting(containerEl)
       .setName('Archived task note')
       .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
       .addText(text => {
-        new FileSuggest(this.app, text.inputEl)
-        text
-          .setValue(this.plugin.settings.archiveNote)
-          .onChange(async (value) => {
-            this.plugin.settings.archiveNote = value || DEFAULT_SETTINGS.archiveNote
-            await this.plugin.saveSettings()
-          })
+        new FileSuggest(this.app, text.inputEl, async (file: TFile) => {
+          this.plugin.settings.archiveNote = file.path
+          await this.plugin.saveSettings()
+        })
+        text.setValue(this.plugin.settings.archiveNote)
       })
 
     new Setting(containerEl)
