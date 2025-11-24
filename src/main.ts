@@ -77,11 +77,6 @@ export default class DoPlugin extends Plugin {
 
     // Queue note for update when metadata cache change detected
     this.registerEvent(this.app.metadataCache.on('changed', file => this.updateQueue.add(file.path)))
-
-    // Notify the view when it is visible
-    this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-      this.view?.table?.setActive(leaf?.view instanceof NextActionView)
-    }))
   }
 
   onunload () {

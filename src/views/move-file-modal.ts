@@ -37,10 +37,11 @@ export class MoveFileModal extends Modal {
     new Setting(contentEl)
       .setName('Select note')
       .addText(text => {
-        new FileSuggest(this.app, text.inputEl)
+        new FileSuggest(this.app, text.inputEl, file => {
+          this.newPath = file.path
+        })
         text.setPlaceholder('Start typing...')
         text.setValue(this.newPath)
-        text.onChange(value => this.newPath = value)
       })
 
     new Setting(contentEl)

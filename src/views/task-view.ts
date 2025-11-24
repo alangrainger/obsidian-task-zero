@@ -47,10 +47,10 @@ export class NextActionView extends ItemView {
         scopes: this.scopes
       }
     })
-    this.table.setActive(true)
   }
 
   async onClose () {
+    this.table?.unmount()
     this.disableAllScopes()
     return unmount(Table)
   }

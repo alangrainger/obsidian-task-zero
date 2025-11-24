@@ -13,6 +13,7 @@
   import { TaskInputModal } from '../task-input-modal'
   import { MoveToProjectModal } from '../move-to-project-modal'
   import Tabs from './Tabs.svelte'
+  import { WorkspaceLeaf } from 'obsidian'
 
   interface Props {
     view: NextActionView
@@ -48,7 +49,10 @@
   $effect(() => {
     if (state.viewIsActive) {
       scopes.tasklist.enable()
-      refresh() // Refresh the task list when the view becomes active
+      // When view becomes active, refresh the list and move the selected line back
+      // to the first task in the list. This is as per GTD - you start at the top
+      // and work down.
+      refresh(true)
     } else {
       view.disableAllScopes()
     }
@@ -106,20 +110,23 @@
     .forEach(num => scopes.tasklist.addHotkey(num.toString(), ['Alt'], () => switchTab(num)))
 
   /**
-   * Refresh the list of tasks
+   * Refresh the tasklist
+   * @param resetPosition - Optionally move the highlighted row back to the top
    */
-  export async function refresh () {
+  export async function refresh (resetPosition = false) {
     debug('Refreshing task list')
 
     // Create the standard tabs
-    const tabs = [{
-      label: DefaultTabs.TASKS,
-      filter: () => true
-    },
+    const tabs = [
+      {
+        label: DefaultTabs.TASKS,
+        filter: true
+      },
       {
         label: DefaultTabs.SOMEDAY,
         filter: (task: Task) => task.type === TaskType.SOMEDAY
-      }] as Tab[]
+      }
+    ] as Tab[]
 
     // Add in the user's custom tabs
     tabs.splice(1, 0, ...plugin.settings.tasklistTabs
@@ -144,6 +151,7 @@
 
     await Promise.all(tasks.map(async task => await task.renderMarkdown()))
     state.tasks = tasks
+    if (resetPosition) state.activeId = tasks[0]?.id
   }
 
   function switchTab (index: number) {
@@ -179,17 +187,6 @@
         plugin.tasks.addTaskToDefaultNote(task).then()
       }
     }).open()
-  }
-
-  export function setActive (isActive: boolean) {
-    state.viewIsActive = isActive
-    if (isActive) {
-      // When view becomes active, refresh the list and move the selected line back
-      // to the first task in the list. This is as per GTD - you start at the top
-      // and work down.
-      refresh()
-      state.activeId = state.tasks[0]?.id
-    }
   }
 
   function clickRow (id: number, event: MouseEvent) {
@@ -241,39 +238,38 @@
   })
 
   onMount(() => {
-    state.tabs = [
-      {
-        id: 'tasklist',
-        label: '✅ Tasks',
-      },
-      {
-        id: 'someday',
-        label: '💤 Someday',
-      },
-      {
-        id: 'work',
-        label: '💼 Work',
-      },
-      {
-        id: 'home',
-        label: '🏠 Home',
-      }
-    ]
-    // I have no idea why, but refresh() would never actually do anything here
-    // unless I put it after a small timeout
-    setTimeout(async () => {
-      await refresh()
-      state.activeId = state.tasks[0]?.id
-    }, 200)
+    // Watch for leaf changes to know when the tasklist is visible/active
+    plugin.app.workspace.on('active-leaf-change', watchLeafChanges)
+
+    setTimeout(async () => { state.activeId = state.tasks[0]?.id }, 150)
   })
 
-  onDestroy(() => {
+  /**
+   * Runs when this component is unmounted/destroyed, and is called from task-view.ts
+   *
+   * I couldn't see how to fire this from onDestroy() or from returning
+   * a function from onMount as per the docs: https://svelte.dev/docs/svelte/lifecycle-hooks#onMount
+   * which is why I've done it this way
+   */
+  export function unmount () {
     dbEvents.off(DatabaseEvent.TasksExternalChange, refresh)
     dbEvents.off(DatabaseEvent.TasksChanged, () => {
       if (!plugin.userActivity.isActive()) refresh()
     })
     view.disableAllScopes()
+    plugin.app.workspace.off('active-leaf-change', watchLeafChanges)
+  }
+
+  onDestroy(() => {
+    console.log('the component is being destroyed')
   })
+
+  /**
+   * Watch for the view to become active and set the reactive state property
+   */
+  function watchLeafChanges (leaf: WorkspaceLeaf | null) {
+    state.viewIsActive = leaf?.view instanceof NextActionView
+  }
 </script>
 
 <div class="gtd-view">
