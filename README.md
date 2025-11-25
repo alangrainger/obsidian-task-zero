@@ -27,3 +27,9 @@ Type `?` on the tasklist screen to open the keyboard shortcuts help page.
 - `s` - Set the task type to "Someday"
 - `w` - Set the task type to "Waiting On"
 - `Space` - Toggle the completed status of the task
+
+## Exclude tasks
+
+- `#exclude-all-tasks`
+- `#exclude-tasks`
+- `#exclude`

@@ -188,7 +188,8 @@ export class Task implements TaskRow {
     const parsed = parsedRes.parsed
 
     // Check whether the section is excluded
-    if (cacheUpdate.cache.tags?.map(x => x.tag).includes(this.tasks.plugin.settings.excludeTags.note)) {
+    if (cacheUpdate.cache.frontmatter?.tags?.includes(this.plugin.settings.excludeTags.note) ||
+      cacheUpdate.cache.tags?.map(x => x.tag).includes(this.plugin.settings.excludeTags.note)) {
       // This note is excluded from processing
       return this.resultFromInit(false)
     } else {

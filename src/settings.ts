@@ -107,7 +107,7 @@ export interface TaskZeroSettings {
 export const DEFAULT_SETTINGS: TaskZeroSettings = {
   defaultNote: 'Next Action quick add',
   archiveNote: 'Next Action completed tasks',
-  taskBlockPrefix: 'na',
+  taskBlockPrefix: 'tz',
   displayOptions: {
     waitingOn: DisplayOption.TAG,
     created: DisplayOption.NONE,
@@ -310,7 +310,7 @@ export class DoSettingTab extends PluginSettingTab {
       .setName('Task block prefix')
       .setDesc(`This will be used in the block ID format for task lines. For example, setting a value of "${this.plugin.settings.taskBlockPrefix}" will produce a block ID in the format of "^${this.plugin.settings.taskBlockPrefix}123"`)
       .addText(text => text
-        .setPlaceholder('do')
+        .setPlaceholder(DEFAULT_SETTINGS.taskBlockPrefix)
         .setValue(this.plugin.settings.taskBlockPrefix)
         .onChange(async (value) => {
           value = value.replace(/[^A-Za-z]/g, '')

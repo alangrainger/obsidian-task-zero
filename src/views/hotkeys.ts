@@ -18,8 +18,6 @@ export enum HotkeyAction {
   OPEN_KEYBOARD_SHORTCUTS = 'open-keyboard-shortcuts',
 }
 
-export type HotkeySettings = Record<HotkeyAction, Hotkey>;
-
 export const HOTKEY_DESCRIPTIONS: Record<HotkeyAction, string> = {
   [HotkeyAction.TASKLIST_MOVE_UP]: 'Move up the tasklist',
   [HotkeyAction.TASKLIST_MOVE_DOWN]: 'Move down the tasklist',
@@ -50,7 +48,7 @@ export class HotkeyModal extends Modal {
 
     new Setting(contentEl)
       .setHeading()
-      .setName('Hotkeys')
+      .setName('Keyboard Shortcuts')
 
     for (const [key, description] of Object.entries(HOTKEY_DESCRIPTIONS)) {
       const hotkey = this.plugin.settings.hotkeys[key as HotkeyAction]

@@ -52,7 +52,8 @@ export class Tasks {
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
     debug('⚙️ Processing cache update for ' + cacheUpdate.file.path)
 
-    if (cacheUpdate.cache.tags?.map(x => x.tag).includes(this.plugin.settings.excludeTags.note))
+    if (cacheUpdate.cache.frontmatter?.tags?.includes(this.plugin.settings.excludeTags.note) ||
+      cacheUpdate.cache.tags?.map(x => x.tag).includes(this.plugin.settings.excludeTags.note))
       // This note is excluded from processing, nothing to do
       return
 
