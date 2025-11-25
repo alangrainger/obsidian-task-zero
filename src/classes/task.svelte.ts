@@ -1,5 +1,5 @@
 import { type App, Component, type ListItemCache, MarkdownRenderer } from 'obsidian'
-import { type CacheUpdate, type CacheUpdateItem, Tasks } from './tasks'
+import { type CacheUpdate, type CacheUpdateItem, noteIsExcluded, Tasks } from './tasks'
 import { assignExisting, debug, getTFileFromPath } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
 import moment from 'moment'
@@ -187,19 +187,18 @@ export class Task implements TaskRow {
     }
     const parsed = parsedRes.parsed
 
-    // Check whether the section is excluded
-    if (cacheUpdate.cache.frontmatter?.tags?.includes(this.plugin.settings.excludeTags.note) ||
-      cacheUpdate.cache.tags?.map(x => x.tag).includes(this.plugin.settings.excludeTags.note)) {
-      // This note is excluded from processing
+    // Check whether the note or section is excluded
+    if (noteIsExcluded(cacheUpdate, this.plugin)) {
       return this.resultFromInit(false)
     } else {
       const nearestHeading = cacheUpdate.cache.headings
         ?.filter(heading => heading.position.start.line < item.position.start.line)
         .pop()?.position.start.line
       const section = lines.slice(nearestHeading || 0, item.position.start.line).join('\n')
-      if (section.match(new RegExp(`(^|\\s)${this.tasks.plugin.settings.excludeTags.section}($|\\s)`, 'm'))) {
+      const tag = this.tasks.plugin.settings.excludeTags.section
+      if (section.match(new RegExp(`(^|\\s)${tag}($|\\s)`, 'm'))) {
         // This section is excluded from processing
-        debug(`Task ${parsed.text} is excluded from processing`)
+        debug(`Task ${parsed.text} is excluded from processing because of section tag ${tag}`)
         return this.resultFromInit(false)
       }
     }
