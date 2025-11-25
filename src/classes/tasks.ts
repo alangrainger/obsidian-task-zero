@@ -52,9 +52,11 @@ export class Tasks {
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
     debug('⚙️ Processing cache update for ' + cacheUpdate.file.path)
 
-    if (noteIsExcluded(cacheUpdate, this.plugin))
-      // This note is excluded from processing, nothing to do
+    if (noteIsExcluded(cacheUpdate, this.plugin)) {
+      // This note is excluded from processing, orphan any existing tasks
+      this.orphanOtherTasks(cacheUpdate.file.path, [])
       return
+    }
 
     const processed: CacheUpdateItem[] = []
     for (const item of (cacheUpdate.cache.listItems?.filter(x => x.task) || [])) {
@@ -67,16 +69,7 @@ export class Tasks {
 
     // Orphan tasks in the DB which are no longer present in the note
     const processedIds = processed.map(x => x.task.id)
-    this.db.rows()
-      .filter(row =>
-        !row.orphaned &&
-        row.path === cacheUpdate.file.path &&
-        !processedIds.includes(row.id))
-      .forEach(task => {
-        debug('Orphaning task ' + task.id)
-        task.orphaned = moment().valueOf()
-        this.db.saveDb()
-      })
+    this.orphanOtherTasks(cacheUpdate.file.path, processedIds)
 
     // Update the file markdown contents if needed, for example to add task IDs
     if (updated.length) {
@@ -238,6 +231,19 @@ export class Tasks {
 
   archiveCompletedTasks () {
 
+  }
+
+  orphanOtherTasks (path: string, keepIds: number[]) {
+    this.db.rows()
+      .filter(row =>
+        !row.orphaned &&
+        row.path === path &&
+        !keepIds.includes(row.id))
+      .forEach(task => {
+        debug('Orphaning task ' + task.id)
+        task.orphaned = moment().valueOf()
+        this.db.saveDb()
+      })
   }
 
   cleanOrphans () {
