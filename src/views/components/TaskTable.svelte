@@ -81,8 +81,8 @@
   const hotkeys = plugin.settings.hotkeys
   scopes.tasklistAndSidebar.addHotkeys([
     [hotkeys[HotkeyAction.TASKLIST_SIDEBAR_CLOSE], () => state.sidebar.open = false],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_UP], listUp],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN], listDown],
+    [{ key: 'ArrowUp', modifiers: ['Alt'] }, listUp],
+    [{ key: 'ArrowDown', modifiers: ['Alt'] }, listDown],
     // ['p', ['Alt'], () => setTaskType(TaskType.PROJECT)],
     // ['a', ['Alt'], () => setTaskType(TaskType.NEXT_ACTION)],
     // ['s', ['Alt'], () => setTaskType(TaskType.SOMEDAY)],
@@ -91,6 +91,8 @@
 
   // Hotkeys for tasklist only
   scopes.tasklist.addHotkeys([
+    [hotkeys[HotkeyAction.TASKLIST_MOVE_UP], listUp],
+    [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN], listDown],
     [hotkeys[HotkeyAction.TASKLIST_MOVE_UP_ALT], listUp],
     [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN_ALT], listDown],
     [hotkeys[HotkeyAction.TASKLIST_OPEN_ACTIVE_ROW], openActiveRow],

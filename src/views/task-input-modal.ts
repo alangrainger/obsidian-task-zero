@@ -23,7 +23,7 @@ export class TaskInputModal extends Modal {
       .setName(this.project ? `Add subtask to ${TaskEmoji.PROJECT} ${this.project.text}` : 'Capture new task')
       .setDesc(this.project ? 'Project has no Next Actions - time to add one.' : `Adding task to the default note: "${this.plugin.settings.defaultNote}"`)
 
-    new Setting(contentEl)
+    const textEl = new Setting(contentEl)
       .addTextArea(text => text
         .setPlaceholder('Start typing your task here...')
         .onChange(value => {
@@ -35,7 +35,8 @@ export class TaskInputModal extends Modal {
             this.submit()
           }
         }))
-      .setClass('next-action-task-textarea')
+      .setClass('task-zero-task-textarea')
+    textEl.infoEl.remove()
 
     new Setting(contentEl)
       .addButton(btn => btn
