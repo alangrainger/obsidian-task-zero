@@ -19,7 +19,7 @@ export type CacheUpdateItem = {
   hasChanges: boolean
 }
 
-export const TaskChangeEvent = 'do:tasks-change'
+export const TaskChangeEvent = 'tz:tasks-change'
 
 export class Tasks {
   readonly tableName = 'tasks'
@@ -268,11 +268,11 @@ export function noteIsExcluded (cacheUpdate: CacheUpdate, plugin: TaskZeroPlugin
   const tag = plugin.settings.excludeTags.note.replace(/#/g, '')
   const tags = [tag, `#${tag}`]
   // The standard frontmatter tags array
-  const standard = cacheUpdate.cache.frontmatter?.tags?.map((x: any) => x.tag).filter((tag: string) => tags.includes(tag))
+  const standard = (cacheUpdate.cache.frontmatter?.tags || []).map((x: any) => x.tag).filter((tag: string) => tags.includes(tag))
   // If the tag exists in the body of the note
-  const body = cacheUpdate.cache.tags?.map(x => x.tag).filter((tag: string) => tags.includes(tag))
+  const body = (cacheUpdate.cache.tags || []).map(x => x.tag).filter((tag: string) => tags.includes(tag))
   // In case the user has put tags into the frontmatter with # symbol, causing them to become a list
-  const list = cacheUpdate.cache.frontmatter?.tags?.filter((tag: string) => tags.includes(tag))
+  const list = (cacheUpdate.cache.frontmatter?.tags || []).filter((tag: string) => tags.includes(tag))
 
   const excluded = standard?.length || body?.length || list?.length
   if (excluded) debug(`Note ${cacheUpdate.file.path} is excluded from processing because it has the tag #${tag}`)

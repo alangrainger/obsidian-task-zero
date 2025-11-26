@@ -342,6 +342,8 @@ export class Task implements TaskRow {
           return '#' + TaskType.WAITING_ON
         } else if (displayOptions.waitingOn === DisplayOption.EMOJI) {
           return TaskEmoji.WAITING_ON
+        } else if (!this.plugin.isMaster()) {
+          return TaskEmoji.WAITING_ON
         } else {
           return ''
         }
@@ -365,19 +367,19 @@ export class Task implements TaskRow {
 
     // Scheduled date
     let scheduled = ''
-    if (this.scheduled && displayOptions.scheduled === DisplayOption.EMOJI) {
+    if (this.scheduled && (displayOptions.scheduled === DisplayOption.EMOJI || !this.plugin.isMaster())) {
       scheduled = TaskEmoji.SCHEDULED + ' ' + this.scheduled
     }
 
     // Due date
     let due = ''
-    if (this.due && displayOptions.due === DisplayOption.EMOJI) {
+    if (this.due && (displayOptions.due === DisplayOption.EMOJI || !this.plugin.isMaster())) {
       due = TaskEmoji.DUE + ' ' + this.due
     }
 
     // Completed date
     let completed = ''
-    if (this.status === TaskStatus.DONE && displayOptions.completed === DisplayOption.EMOJI) {
+    if (this.status === TaskStatus.DONE && (displayOptions.completed === DisplayOption.EMOJI || !this.plugin.isMaster())) {
       const date = this.completed ? moment(this.completed) : moment()
       completed = TaskEmoji.COMPLETED + ' ' + date.format('YYYY-MM-DD')
     }

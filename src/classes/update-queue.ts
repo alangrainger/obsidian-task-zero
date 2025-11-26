@@ -53,10 +53,11 @@ export class UpdateQueue {
         // issues with the user and the plugin both changing the data
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
         if (!activeView || activeView.file?.path !== cacheItemPath) {
+          this.delete(cacheItemPath)
+          debug(`🔄 Processing ${cacheItemPath}`)
           const cache = this.app.metadataCache.getCache(cacheItemPath)
           const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
           if (cache && file instanceof TFile) {
-            this.delete(cacheItemPath)
             const data = await this.app.vault.cachedRead(file)
             await this.plugin.tasks.processTasksFromCacheUpdate({ file, data, cache })
           }
