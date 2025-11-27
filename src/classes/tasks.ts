@@ -3,7 +3,7 @@ import TaskZeroPlugin from '../main'
 import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table, Tablename } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
-import { debug, getOrCreateFile, getTFileFromPath } from '../functions'
+import { debug, getOrCreateFile } from '../functions'
 import { TaskInputModal } from '../views/task-input-modal'
 import moment from 'moment'
 
@@ -202,7 +202,7 @@ export class Tasks {
    * nothing will be changed.
    */
   async updateTasksInNote (path: string, tasks: Task[]) {
-    const tfile = getTFileFromPath(this.app, path)
+    const tfile = this.app.vault.getFileByPath(path)
     if (tfile) {
       await this.app.vault.process(tfile, data => {
         debug(`Updated ${tasks.length} tasks in ${path}`)
@@ -247,14 +247,39 @@ export class Tasks {
   }
 
   cleanOrphans () {
-    const now = moment()
-    for (const row of this.db.rows()) {
-      if (!row.path) {
-        // Task has no path, so orphan it now
-        if (!row.orphaned) row.orphaned = now.valueOf()
-      }
-      if (now.diff(moment(row.orphaned), 'days') > 30) {
-        // Task has been orphaned for more than 1 month, delete it
+    const now = moment().valueOf()
+    if (this.plugin.settings.database.lastCleanup > now - 1000 * 60 * 60 * 24) return
+
+    debug('🗑️ Cleaning up orphaned tasks')
+    this.plugin.settings.database.lastCleanup = now
+    this.plugin.saveSettings().then()
+
+    const existingNotes = new Set<string>()
+    const deletedNotes = new Set<string>()
+    const rows = this.db.rows()
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const row = rows[i]
+      if (row.orphaned) {
+        // Remove orphaned tasks older than 14 days
+        if (row.orphaned < now - 1000 * 60 * 60 * 24 * 14)
+          this.db.delete(row.id)
+      } else if (!row.path) {
+        // Orphan tasks with no associated note
+        row.orphaned = now
+      } else if (deletedNotes.has(row.path)) {
+        // We know this note no longer exists; orphan the task
+        row.orphaned = now
+      } else if (existingNotes.has(row.path)) {
+        // We know that this note exists, so there's nothing to orphan
+      } else {
+        // Check to make sure the note still exists
+        const file = this.app.vault.getFileByPath(row.path)
+        if (file) {
+          existingNotes.add(row.path)
+        } else {
+          row.orphaned = now.valueOf()
+          deletedNotes.add(row.path)
+        }
       }
     }
   }

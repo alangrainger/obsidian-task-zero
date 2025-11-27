@@ -1,6 +1,6 @@
 import { type App, Component, type ListItemCache, MarkdownRenderer } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, noteIsExcluded, Tasks } from './tasks'
-import { assignExisting, debug, getTFileFromPath } from '../functions'
+import { assignExisting, debug } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
 import moment from 'moment'
 import { DisplayOption } from '../settings'
@@ -425,7 +425,7 @@ export class Task implements TaskRow {
    */
   async move (toPath: string, beforeTask?: number, afterTask?: number) {
     // Remove the task from its current note
-    const currentFile = getTFileFromPath(this.app, this.path)
+    const currentFile = this.app.vault.getFileByPath(this.path)
     if (!currentFile) return
     await this.app.vault.process(currentFile, data => {
       const lines = data.split('\n')
@@ -445,7 +445,7 @@ export class Task implements TaskRow {
     }
 
     // Add task to new note
-    const newFile = getTFileFromPath(this.app, toPath)
+    const newFile = this.app.vault.getFileByPath(toPath)
     if (!newFile) return
     await this.app.vault.process(newFile, data => {
       if (line >= 0) {
@@ -538,7 +538,7 @@ export class Task implements TaskRow {
     subtask.line = line
     if (type) subtask.type = type
 
-    const tfile = getTFileFromPath(this.tasks.app, this.path)
+    const tfile = this.tasks.app.vault.getFileByPath(this.path)
     if (tfile) {
       await this.tasks.app.vault.process(tfile, data => {
         const lines = data.split('\n')

@@ -34,14 +34,9 @@ export function fromNow (date?: Moment): string {
   return date.fromNow()
 }
 
-export function getTFileFromPath (app: App, path: string): TFile | undefined {
-  const tfile = app.vault.getAbstractFileByPath(path)
-  return tfile instanceof TFile ? tfile : undefined
-}
-
 export async function getOrCreateFile (app: App, path: string): Promise<TFile> {
   if (!path.endsWith('.md')) path += '.md'
-  let file = getTFileFromPath(app, path)
+  let file = app.vault.getFileByPath(path)
   if (!file) {
     // File doesn't exist, so create it
     file = await app.vault.create(path, '')

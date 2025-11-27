@@ -15,8 +15,9 @@ export class UpdateQueue {
     this.queue = plugin.settings.database.changeQueue
 
     // Process the cache change queue
-    this.cacheChangeInterval = setInterval(() => {
-      this.processQueue().then()
+    this.cacheChangeInterval = setInterval(async () => {
+      await this.processQueue()
+      this.plugin.tasks.cleanOrphans()
     }, 2000)
   }
 

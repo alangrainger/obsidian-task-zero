@@ -98,6 +98,7 @@ export interface TaskZeroSettings {
       rows: TaskRow[];
     },
     changeQueue: string[]
+    lastCleanup: number
   }
   debug: boolean;
 
@@ -142,7 +143,8 @@ export const DEFAULT_SETTINGS: TaskZeroSettings = {
       autoincrement: 1,
       rows: []
     },
-    changeQueue: []
+    changeQueue: [],
+    lastCleanup: 0
   },
   debug: false
 }
