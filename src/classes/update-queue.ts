@@ -6,7 +6,7 @@ export class UpdateQueue {
   app: App
   plugin: TaskZeroPlugin
   private readonly queue: string[]
-  private readonly cacheChangeInterval: NodeJS.Timeout
+  private cacheChangeInterval: NodeJS.Timeout
   private running = false
 
   constructor (plugin: TaskZeroPlugin) {
@@ -15,10 +15,24 @@ export class UpdateQueue {
     this.queue = plugin.settings.database.changeQueue
 
     // Process the cache change queue
+    this.cacheChangeInterval = this.initQueue()
+  }
+
+  initQueue () {
+    clearInterval(this.cacheChangeInterval)
     this.cacheChangeInterval = setInterval(async () => {
+      // Store the time the queue was last executed, so that we can identify if it fails
+      this.plugin.settings.database.lastQueueCheck = Date.now()
       await this.processQueue()
       this.plugin.tasks.cleanOrphans()
     }, 2000)
+    return this.cacheChangeInterval
+  }
+
+  checkQueue () {
+    // If the queue hasn't run in the last 2 minutes, restart it
+    if (this.plugin.settings.database.lastQueueCheck < Date.now() - 1000 * 60 * 2)
+      this.initQueue()
   }
 
   add (path: string) {
@@ -27,6 +41,7 @@ export class UpdateQueue {
       this.queue.push(path)
       this.plugin.saveSettings().then()
     }
+    this.checkQueue()
   }
 
   delete (path: string) {
@@ -50,18 +65,22 @@ export class UpdateQueue {
     if (this.plugin.isMaster() && this.plugin.userActivity.isActive()) {
       this.running = true
       for (const cacheItemPath of this.queue) {
-        // Only process the update if the view is no longer active, to prevent
-        // issues with the user and the plugin both changing the data
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
-        if (!activeView || activeView.file?.path !== cacheItemPath) {
-          this.delete(cacheItemPath)
-          debug(`🔄 Processing ${cacheItemPath}`)
-          const cache = this.app.metadataCache.getCache(cacheItemPath)
-          const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
-          if (cache && file instanceof TFile) {
-            const data = await this.app.vault.cachedRead(file)
-            await this.plugin.tasks.processTasksFromCacheUpdate({ file, data, cache })
+        try {
+          // Only process the update if the view is no longer active, to prevent
+          // issues with the user and the plugin both changing the data
+          const activeView = this.app.workspace.getActiveViewOfType(MarkdownView)
+          if (!activeView || activeView.file?.path !== cacheItemPath) {
+            this.delete(cacheItemPath)
+            debug(`🔄 Processing ${cacheItemPath}`)
+            const cache = this.app.metadataCache.getCache(cacheItemPath)
+            const file = this.app.vault.getAbstractFileByPath(cacheItemPath)
+            if (cache && file instanceof TFile) {
+              const data = await this.app.vault.cachedRead(file)
+              await this.plugin.tasks.processTasksFromCacheUpdate({ file, data, cache })
+            }
           }
+        } catch (e) {
+          console.log(e)
         }
       }
     }

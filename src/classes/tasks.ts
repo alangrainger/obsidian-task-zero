@@ -234,24 +234,23 @@ export class Tasks {
     }).open()
   }
 
-  archiveCompletedTasks () {
-
-  }
-
   /**
    * Orphan tasks from a given path, excluding ones from the keepIds array
    */
   orphanTasksFromPath (path: string, keepIds: number[] = []) {
-    this.db.rows()
+    const tasks = this.db.rows()
       .filter(row =>
         !row.orphaned &&
         row.path === path &&
         !keepIds.includes(row.id))
-      .forEach(task => {
-        debug('Orphaning task ' + task.id)
-        task.orphaned = moment().valueOf()
-        this.db.saveDb()
-      })
+    if (!tasks.length) return
+
+    tasks.forEach(task => {
+      debug('Orphaning task ' + task.id)
+      task.orphaned = moment().valueOf()
+      this.db.saveDb()
+    })
+    dbEvents.emit(DatabaseEvent.TasksExternalChange)
   }
 
   cleanOrphans () {
@@ -290,6 +289,7 @@ export class Tasks {
         }
       }
     }
+    dbEvents.emit(DatabaseEvent.TasksExternalChange)
   }
 }
 
@@ -298,14 +298,22 @@ export class Tasks {
  * This checks for the tag both with and without the # symbol
  */
 export function noteIsExcluded (cacheUpdate: CacheUpdate, plugin: TaskZeroPlugin) {
+  if (!cacheUpdate) return false
   const tag = plugin.settings.excludeTags.note.replace(/#/g, '')
   const tags = [tag, `#${tag}`]
+  let standard = [], body = [], list = []
   // The standard frontmatter tags array
-  const standard = (cacheUpdate.cache.frontmatter?.tags || []).map((x: any) => x.tag).filter((tag: string) => tags.includes(tag))
+  try {
+    standard = (cacheUpdate.cache?.frontmatter?.tags || []).map((x: any) => x.tag).filter((tag: string) => tags.includes(tag))
+  } catch (_) {}
   // If the tag exists in the body of the note
-  const body = (cacheUpdate.cache.tags || []).map(x => x.tag).filter((tag: string) => tags.includes(tag))
+  try {
+    body = (cacheUpdate.cache?.tags || []).map(x => x.tag).filter((tag: string) => tags.includes(tag))
+  } catch (_) {}
   // In case the user has put tags into the frontmatter with # symbol, causing them to become a list
-  const list = (cacheUpdate.cache.frontmatter?.tags || []).filter((tag: string) => tags.includes(tag))
+  try {
+    list = (cacheUpdate.cache?.frontmatter?.tags || []).filter((tag: string) => tags.includes(tag))
+  } catch (_) {}
 
   const excluded = standard?.length || body?.length || list?.length
   if (excluded) debug(`Note ${cacheUpdate.file.path} is excluded from processing because it has the tag #${tag}`)

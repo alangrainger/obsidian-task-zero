@@ -300,7 +300,7 @@
                 </td>
                 <td style="width:1.8em">{@html icon(task)}</td>
                 <td class="task-zero-table-task">
-                    <div class="task-zero-table-clip" id="test">
+                    <div class="task-zero-table-clip">
                         <!--{task.text}-->
                         {@html task.renderedMarkdown}
                     </div>
