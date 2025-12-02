@@ -11,6 +11,21 @@ export type ParsedMarkdownTask = {
   excluded: boolean
 }
 
+const DATE_WORDS = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  tod: 0,
+  tom: 1,
+  week: 7
+}
+
 export class MarkdownTaskParser {
   plugin: TaskZeroPlugin
   regex: { [key: string]: RegExp }
@@ -137,29 +152,40 @@ export class MarkdownTaskParser {
   }
 
   getScheduled () {
-    const match = this.getAndRemoveMatch(this.regex.scheduled)
-    if (match) {
-      // This is the normal ⏳ 2025-01-01 style
-      return match
-    } else if (this.getAndRemoveMatch(/(\$tod(ay|))/)) {
-      // Today
-      return moment().format(DATE_FORMAT)
-    } else if (this.getAndRemoveMatch(/(\$tom(orrow|))/)) {
-      // Tomorrow
-      return moment().add(1, 'day').format(DATE_FORMAT)
-    } else {
-      // The next occurrence of this day - e.g. $tuesday
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-      for (let i = 0; i < days.length; i++) {
-        const match = this.getAndRemoveMatch(new RegExp(`(\\$${days[i]})`))
-        if (match) {
-          const day = moment().day(i)
-          if (day.isSameOrBefore(moment(), 'day')) day.add(7, 'days')
-          return day.format(DATE_FORMAT)
+    // This is the normal ⏳ 2025-01-01 style
+    const standard = this.getAndRemoveMatch(this.regex.scheduled)
+    if (standard) return standard
+
+    // This is for the special $date type
+    const match = this.taskLine.match(/(?:^|\s)\$([a-z]+)(?:\s|$)/)
+    if (!match || match?.length < 2) return ''
+    const input = match[1]
+    let date = ''
+
+    // A named day like $tuesday
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    for (let i = 0; i < days.length; i++) {
+      if (input.startsWith(days[i])) {
+        const day = moment().day(i)
+        if (day.isSameOrBefore(moment(), 'day')) day.add(7, 'days')
+        date = day.format(DATE_FORMAT)
+      }
+    }
+
+    // Other special date words like $three
+    if (!date) {
+      for (const [key, value] of Object.entries(DATE_WORDS)) {
+        if (input.startsWith(key)) {
+          date = moment().add(value, 'day').format(DATE_FORMAT)
+          break
         }
       }
     }
-    return ''
+
+    // Remove the original input text from the task line
+    if (date) this.taskLine = this.taskLine.replace(match[0], ' ')
+
+    return date
   }
 
   getCompleted () {
