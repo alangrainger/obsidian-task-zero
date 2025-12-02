@@ -19,8 +19,8 @@ I do not have the skill or knowledge to solve this problem.
  */
 export const moment = momentModule.default || momentModule
 
-export const debug: { (...message: any[]): void, enabled: boolean } = Object.assign(
-  function (...message: (string | number | boolean | undefined)[]) {
+export const debug: { (...message: unknown[]): void, enabled: boolean } = Object.assign(
+  function (...message: unknown[]) {
     if (debug.enabled) console.debug(...message)
   },
   { enabled: false }

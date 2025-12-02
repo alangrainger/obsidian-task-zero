@@ -29,7 +29,7 @@ export default class TaskZeroPlugin extends Plugin {
       (leaf) => new TaskZeroView(leaf, this)
     )
     this.addRibbonIcon('square-check-big', 'Open Tasklist', () => {
-      this.activateView()
+      void this.activateView()
     })
 
     // Quick capture new task
@@ -54,7 +54,7 @@ export default class TaskZeroPlugin extends Plugin {
         if (checking) {
           return !!view?.file
         } else if (view?.file) {
-          (async () => {
+          void (async () => {
             let completedTaskString = ''
             // Remove tasks from original file
             if (view.file instanceof TFile) {

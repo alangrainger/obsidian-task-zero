@@ -308,7 +308,9 @@ export function noteIsExcluded (cacheUpdate: CacheUpdate, plugin: TaskZeroPlugin
   let standard: string[] = [], body: string[] = [], list: string[] = []
   // The standard frontmatter tags array
   try {
-    standard = (cacheUpdate.cache?.frontmatter?.tags || []).map((x: any) => x.tag).filter((tag: string) => tags.includes(tag))
+    standard = (cacheUpdate.cache?.frontmatter?.tags || []).map((x: {
+      tag: string
+    }) => x.tag).filter((tag: string) => tags.includes(tag))
   } catch (e) { debug(e) }
   // If the tag exists in the body of the note
   try {

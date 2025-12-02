@@ -6,17 +6,17 @@ import { FileSuggest } from './views/suggest/file-suggest'
 import type { Tab } from './views/view-types'
 import { HotkeyAction } from './views/hotkeys'
 
+export enum DisplayOption {
+  EMOJI = 'Emoji',
+  TAG = 'Tag',
+  NONE = 'None'
+}
+
 interface TaskElement {
   key: string
   name: string
   dropdownOptions: DisplayOption[]
   emoji: string
-}
-
-export enum DisplayOption {
-  EMOJI = 'Emoji',
-  TAG = 'Tag',
-  NONE = 'None'
 }
 
 const taskElements: TaskElement[] = [
@@ -117,22 +117,61 @@ export const DEFAULT_SETTINGS: TaskZeroSettings = {
     created: DisplayOption.NONE,
     scheduled: DisplayOption.EMOJI,
     due: DisplayOption.EMOJI,
-    completed: DisplayOption.EMOJI,
+    completed: DisplayOption.EMOJI
   },
   hotkeys: {
-    [HotkeyAction.TASKLIST_MOVE_UP]: { key: 'ArrowUp', modifiers: [] },
-    [HotkeyAction.TASKLIST_MOVE_DOWN]: { key: 'ArrowDown', modifiers: [] },
-    [HotkeyAction.TASKLIST_MOVE_UP_ALT]: { key: 'j', modifiers: [] },
-    [HotkeyAction.TASKLIST_MOVE_DOWN_ALT]: { key: 'k', modifiers: [] },
-    [HotkeyAction.TASKLIST_SIDEBAR_CLOSE]: { key: 'Escape', modifiers: [] },
-    [HotkeyAction.TASKLIST_OPEN_ACTIVE_ROW]: { key: 'Enter', modifiers: [] },
-    [HotkeyAction.TASKLIST_MOVE_TASK]: { key: 'm', modifiers: [] },
-    [HotkeyAction.TASKLIST_NEW_TASK]: { key: 'n', modifiers: [] },
-    [HotkeyAction.TASKLIST_TOGGLE_COMPLETED]: { key: ' ', modifiers: [] },
-    [HotkeyAction.TASK_SET_TYPE_PROJECT]: { key: 'p', modifiers: [] },
-    [HotkeyAction.TASK_SET_TYPE_NEXT_ACTION]: { key: 'a', modifiers: [] },
-    [HotkeyAction.TASK_SET_TYPE_SOMEDAY]: { key: 's', modifiers: [] },
-    [HotkeyAction.TASK_SET_TYPE_WAITING_ON]: { key: 'w', modifiers: [] },
+    [HotkeyAction.TASKLIST_MOVE_UP]: {
+      key: 'ArrowUp',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_MOVE_DOWN]: {
+      key: 'ArrowDown',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_MOVE_UP_ALT]: {
+      key: 'j',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_MOVE_DOWN_ALT]: {
+      key: 'k',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_SIDEBAR_CLOSE]: {
+      key: 'Escape',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_OPEN_ACTIVE_ROW]: {
+      key: 'Enter',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_MOVE_TASK]: {
+      key: 'm',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_NEW_TASK]: {
+      key: 'n',
+      modifiers: []
+    },
+    [HotkeyAction.TASKLIST_TOGGLE_COMPLETED]: {
+      key: ' ',
+      modifiers: []
+    },
+    [HotkeyAction.TASK_SET_TYPE_PROJECT]: {
+      key: 'p',
+      modifiers: []
+    },
+    [HotkeyAction.TASK_SET_TYPE_NEXT_ACTION]: {
+      key: 'a',
+      modifiers: []
+    },
+    [HotkeyAction.TASK_SET_TYPE_SOMEDAY]: {
+      key: 's',
+      modifiers: []
+    },
+    [HotkeyAction.TASK_SET_TYPE_WAITING_ON]: {
+      key: 'w',
+      modifiers: []
+    },
   },
   excludeTags: {
     note: '#exclude-all-tasks',
@@ -191,9 +230,9 @@ export class DoSettingTab extends PluginSettingTab {
       .setName('Default task note')
       .setDesc('The note that will be used to store tasks when creating from Quick Add.')
       .addText(text => {
-        new FileSuggest(this.app, text.inputEl, async (file: TFile) => {
+        new FileSuggest(this.app, text.inputEl, (file: TFile) => {
           this.plugin.settings.defaultNote = file.path
-          await this.plugin.saveSettings()
+          void this.plugin.saveSettings()
         })
         text.setValue(this.plugin.settings.defaultNote)
       })
@@ -202,9 +241,9 @@ export class DoSettingTab extends PluginSettingTab {
       .setName('Archived task note')
       .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
       .addText(text => {
-        new FileSuggest(this.app, text.inputEl, async (file: TFile) => {
+        new FileSuggest(this.app, text.inputEl, (file: TFile) => {
           this.plugin.settings.archiveNote = file.path
-          await this.plugin.saveSettings()
+          void this.plugin.saveSettings()
         })
         text.setValue(this.plugin.settings.archiveNote)
       })

@@ -55,8 +55,6 @@ export interface TaskRow {
 }
 
 export class Task implements TaskRow {
-  [key: string]: any
-
   tasks: Tasks
   app: App
   plugin: TaskZeroPlugin
