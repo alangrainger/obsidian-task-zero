@@ -107,8 +107,8 @@ export interface TaskZeroSettings {
 }
 
 export const DEFAULT_SETTINGS: TaskZeroSettings = {
-  defaultNote: 'Next Action quick add',
-  archiveNote: 'Next Action completed tasks',
+  defaultNote: 'Task Zero quick add',
+  archiveNote: 'Task Zero completed tasks',
   taskBlockPrefix: 'tz',
   displayOptions: {
     waitingOn: DisplayOption.TAG,
