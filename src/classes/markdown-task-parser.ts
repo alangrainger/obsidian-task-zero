@@ -1,6 +1,6 @@
 import type TaskZeroPlugin from '../main'
 import { TaskEmoji, type TaskRow, TaskStatus, TaskType } from './task.svelte'
-import moment from 'moment'
+import { moment } from '../functions'
 
 const DATE_FORMAT = 'YYYY-MM-DD'
 
@@ -36,9 +36,9 @@ export class MarkdownTaskParser {
     this.regex = {
       id: new RegExp(`\\^${this.blockPrefix}(\\d+)\\s*$`),
       status: /^\s*-\s+\[(.)]\s+/,
-      project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})[^\w-]`),
-      someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})[^\w-]`),
-      waitingOn: new RegExp(`\\s+(${TaskEmoji.WAITING_ON}|#${TaskType.WAITING_ON})[^\w-]`),
+      project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})[^\\w-]`),
+      someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})[^\\w-]`),
+      waitingOn: new RegExp(`\\s+(${TaskEmoji.WAITING_ON}|#${TaskType.WAITING_ON})[^\\w-]`),
       created: /➕\s*(\d{4}-\d{2}-\d{2})/,
       due: /📅\s*(\d{4}-\d{2}-\d{2})/,
       scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,

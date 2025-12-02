@@ -13,6 +13,7 @@
     "strictNullChecks": true,
     "types": [
       "obsidian-typings",
+      "obsidian",
       "svelte",
       "node"
     ],

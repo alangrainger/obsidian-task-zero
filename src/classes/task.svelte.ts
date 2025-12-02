@@ -1,8 +1,7 @@
 import { type App, Component, type ListItemCache, MarkdownRenderer } from 'obsidian'
 import { type CacheUpdate, type CacheUpdateItem, noteIsExcluded, Tasks } from './tasks'
-import { assignExisting, debug } from '../functions'
+import { moment, assignExisting, debug } from '../functions'
 import { MarkdownTaskParser } from './markdown-task-parser'
-import moment from 'moment'
 import { DisplayOption } from '../settings'
 import type TaskZeroPlugin from '../main'
 

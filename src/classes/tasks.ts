@@ -3,9 +3,8 @@ import TaskZeroPlugin from '../main'
 import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
 import { Table, Tablename } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
-import { debug, getOrCreateFile } from '../functions'
+import { moment, debug, getOrCreateFile } from '../functions'
 import { TaskInputModal } from '../views/task-input-modal'
-import moment from 'moment'
 
 export interface CacheUpdate {
   file: TFile
