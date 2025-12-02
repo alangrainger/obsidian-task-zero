@@ -2,7 +2,7 @@
 
 Task Zero is an opinionated GTD-style task management system for Obsidian. If you've ever used [MyLifeOrganized](https://www.mylifeorganized.net/), the UI will be immediately familiar. I love MLO and used it for many years, and wanted a similar experience inside Obsidian.
 
-[📄 Docs / How to use](https://taskzero.alan.gr/)
+[👉 Documentation / How to use](https://taskzero.alan.gr/)
 
 ![](docs/main-tasklist.png)
 
