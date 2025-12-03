@@ -1,8 +1,8 @@
-import { MarkdownView, Plugin, TFile, type WorkspaceLeaf } from 'obsidian'
+import { MarkdownView, Plugin, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS, type TaskZeroSettings, DoSettingTab } from './settings'
 import { Tasks } from './classes/tasks'
 import { TASK_ZERO_VIEW_TYPE, TaskZeroView } from './views/task-view'
-import { debug, getOrCreateFile } from './functions'
+import { debug } from './functions'
 import { DetectUser } from './classes/detect-user'
 import { UpdateQueue } from './classes/update-queue'
 import { dbEvents } from './classes/database-events'
@@ -54,24 +54,7 @@ export default class TaskZeroPlugin extends Plugin {
         if (checking) {
           return !!view?.file
         } else if (view?.file) {
-          void (async () => {
-            let completedTasks: string[] = []
-            // Remove tasks from original file
-            if (view.file instanceof TFile) {
-              await this.app.vault.process(view.file, data => {
-                const lines = data.split('\n')
-                for (let i = lines.length - 1; i >= 0; i--) {
-                  if (lines[i].match(/^[ \t]*- \[x]/)) {
-                    completedTasks.unshift(...lines.splice(i, 1))
-                  }
-                }
-                return lines.join('\n')
-              })
-            }
-            // Add tasks to the archive file
-            const file = await getOrCreateFile(this.app, this.settings.archiveNote)
-            await this.app.vault.append(file, completedTasks.join('\n') + '\n')
-          })()
+          void this.tasks.archiveTasksFromPath(view.file.path)
         }
       }
     })

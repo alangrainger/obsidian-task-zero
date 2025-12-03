@@ -108,8 +108,8 @@ export interface TaskZeroSettings {
 }
 
 export const DEFAULT_SETTINGS: TaskZeroSettings = {
-  defaultNote: 'Task Zero quick add',
-  archiveNote: 'Task Zero completed tasks',
+  defaultNote: 'Task Zero quick add.md',
+  archiveNote: 'Task Zero completed tasks.md',
   taskBlockPrefix: 'tz',
   styleBlockId: true,
   displayOptions: {
@@ -231,7 +231,7 @@ export class DoSettingTab extends PluginSettingTab {
       .setDesc('The note that will be used to store tasks when creating from Quick Add.')
       .addText(text => {
         new FileSuggest(this.app, text.inputEl, (file: TFile) => {
-          this.plugin.settings.defaultNote = file.path
+          this.plugin.settings.defaultNote = file.path || DEFAULT_SETTINGS.defaultNote
           void this.plugin.saveSettings()
         })
         text.setValue(this.plugin.settings.defaultNote)
@@ -242,7 +242,7 @@ export class DoSettingTab extends PluginSettingTab {
       .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
       .addText(text => {
         new FileSuggest(this.app, text.inputEl, (file: TFile) => {
-          this.plugin.settings.archiveNote = file.path
+          this.plugin.settings.archiveNote = file.path || DEFAULT_SETTINGS.archiveNote
           void this.plugin.saveSettings()
         })
         text.setValue(this.plugin.settings.archiveNote)

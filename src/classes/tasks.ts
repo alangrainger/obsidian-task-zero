@@ -238,6 +238,33 @@ export class Tasks {
   }
 
   /**
+   * Remove completed tasks from a note specified by path,
+   * and move to the Archived Tasks note
+   */
+  async archiveTasksFromPath (path: string) {
+    if (!this.plugin.settings.archiveNote) return
+    const file = this.app.vault.getFileByPath(path)
+    let completedTasks: string[] = []
+    // Remove tasks from original file
+    if (file instanceof TFile) {
+      await this.app.vault.process(file, data => {
+        const lines = data.split('\n')
+        for (let i = lines.length - 1; i >= 0; i--) {
+          if (lines[i].match(/^[ \t]*- \[x]/)) {
+            completedTasks.unshift(...lines.splice(i, 1))
+          }
+        }
+        return lines.join('\n')
+      })
+    }
+    if (completedTasks.length) {
+      // Add tasks to the archive file
+      const archiveNote = await getOrCreateFile(this.app, this.plugin.settings.archiveNote)
+      await this.app.vault.append(archiveNote, completedTasks.join('\n') + '\n')
+    }
+  }
+
+  /**
    * Orphan tasks from a given path, excluding ones from the keepIds array
    */
   orphanTasksFromPath (path: string, keepIds: number[] = []) {
