@@ -268,6 +268,7 @@
 
   // Update tasks list when tasks DB changes
   dbEvents.on(DatabaseEvent.TasksExternalChange, refresh)
+  dbEvents.on(DatabaseEvent.OpenTasklistView, () => state.viewIsActive = true)
   dbEvents.on(DatabaseEvent.TasksChanged, () => {
     if (!plugin.userActivity.isActive()) refresh()
   })
@@ -288,6 +289,7 @@
    */
   export function unmount () {
     dbEvents.off(DatabaseEvent.TasksExternalChange, refresh)
+    dbEvents.off(DatabaseEvent.OpenTasklistView, () => state.viewIsActive = true)
     dbEvents.off(DatabaseEvent.TasksChanged, () => {
       if (!plugin.userActivity.isActive()) refresh()
     })

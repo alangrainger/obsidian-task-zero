@@ -5,7 +5,7 @@ import { TASK_ZERO_VIEW_TYPE, TaskZeroView } from './views/task-view'
 import { debug } from './functions'
 import { DetectUser } from './classes/detect-user'
 import { UpdateQueue } from './classes/update-queue'
-import { dbEvents } from './classes/database-events'
+import { DatabaseEvent, dbEvents } from './classes/database-events'
 
 export default class TaskZeroPlugin extends Plugin {
   tasks!: Tasks
@@ -109,8 +109,12 @@ export default class TaskZeroPlugin extends Plugin {
         active: true
       })
     }
-    // Reveal the leaf
-    if (leaf) void this.app.workspace.revealLeaf(leaf)
+    if (leaf) {
+      await this.app.workspace.revealLeaf(leaf)
+      // Strangely enough, revealing the leaf doesn't fire Obsidian's
+      // active-leaf-change event, so we have to send our own event 🤷
+      dbEvents.emit(DatabaseEvent.OpenTasklistView)
+    }
   }
 
   /**
