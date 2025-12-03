@@ -55,22 +55,22 @@ export default class TaskZeroPlugin extends Plugin {
           return !!view?.file
         } else if (view?.file) {
           void (async () => {
-            let completedTaskString = ''
+            let completedTasks: string[] = []
             // Remove tasks from original file
             if (view.file instanceof TFile) {
               await this.app.vault.process(view.file, data => {
-                const taskRegex = /(?:^|\n)[ \t]*- \[x].*?(\n|$)/sg
-                const completedTasks = data.match(taskRegex)?.map(line => line.trim()).join('\n')
-                if (completedTasks) {
-                  completedTaskString = completedTasks
-                  data = data.replace(taskRegex, '')
+                const lines = data.split('\n')
+                for (let i = lines.length - 1; i >= 0; i--) {
+                  if (lines[i].match(/^[ \t]*- \[x]/)) {
+                    completedTasks.unshift(...lines.splice(i, 1))
+                  }
                 }
-                return data
+                return lines.join('\n')
               })
             }
             // Add tasks to the archive file
             const file = await getOrCreateFile(this.app, this.settings.archiveNote)
-            await this.app.vault.append(file, completedTaskString.trim() + '\n')
+            await this.app.vault.append(file, completedTasks.join('\n') + '\n')
           })()
         }
       }
