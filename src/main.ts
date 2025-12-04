@@ -62,14 +62,14 @@ export default class TaskZeroPlugin extends Plugin {
     // Queue note for update when metadata cache change detected
     this.registerEvent(this.app.metadataCache.on('changed', file => this.updateQueue.add(file.path)))
 
-    window.taskzero = this // Should be allowed - I got it from https://obsidian.md/plugins?id=kv-store
+    window.tz = this // Should be allowed - I got it from https://obsidian.md/plugins?id=kv-store
   }
 
   onunload () {
     this.updateQueue.unload()
     this.userActivity.unload()
     dbEvents.destroy()
-    delete window.taskzero
+    delete window.tz
   }
 
   async loadSettings () {
@@ -130,6 +130,6 @@ export default class TaskZeroPlugin extends Plugin {
 
 declare global {
   interface Window {
-    taskzero?: TaskZeroPlugin
+    tz?: TaskZeroPlugin
   }
 }
