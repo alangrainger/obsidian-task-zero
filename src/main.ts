@@ -61,12 +61,15 @@ export default class TaskZeroPlugin extends Plugin {
 
     // Queue note for update when metadata cache change detected
     this.registerEvent(this.app.metadataCache.on('changed', file => this.updateQueue.add(file.path)))
+
+    window.taskzero = this // Should be allowed - I got it from https://obsidian.md/plugins?id=kv-store
   }
 
   onunload () {
     this.updateQueue.unload()
     this.userActivity.unload()
     dbEvents.destroy()
+    delete window.taskzero
   }
 
   async loadSettings () {
@@ -123,4 +126,10 @@ export default class TaskZeroPlugin extends Plugin {
    * See https://taskzero.alan.gr/master-device for more details.
    */
   isMaster () { return this.app.appId === this.settings.masterAppId }
+}
+
+declare global {
+  interface Window {
+    taskzero?: TaskZeroPlugin
+  }
 }
