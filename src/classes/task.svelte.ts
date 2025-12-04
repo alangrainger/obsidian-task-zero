@@ -23,7 +23,7 @@ export enum TaskType {
 export enum TaskEmoji {
   NONE = '',
   INBOX = '📥',
-  NEXT_ACTION = '➡️',
+  NEXT_ACTION = '▶️',
   PROJECT = '🗃️',
   WAITING_ON = '⏸️',
   SOMEDAY = '💤',
