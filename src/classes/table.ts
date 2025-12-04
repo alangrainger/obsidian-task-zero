@@ -11,10 +11,9 @@ type Data = {
 }
 
 export class Database {
-  plugin: TaskZeroPlugin
-  data: Data
-  dataChanged: Event
-  initialised = false
+  private plugin: TaskZeroPlugin
+  private data: Data
+  private readonly dataChanged: Event
 
   /**
    * Save data to disk. This function is debounced.

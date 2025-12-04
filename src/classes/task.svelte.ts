@@ -56,9 +56,9 @@ export interface TaskRow {
 }
 
 export class Task implements TaskRow {
-  tasks: Tasks
-  app: App
-  plugin: TaskZeroPlugin
+  private readonly tasks: Tasks
+  private readonly app: App
+  private readonly plugin: TaskZeroPlugin
 
   id = 0
   status = $state(TaskStatus.TODO)
@@ -77,7 +77,7 @@ export class Task implements TaskRow {
   markdownComponent = new Component()
   markdownTaskParser: MarkdownTaskParser
 
-  get DEFAULT_DATA (): TaskRow {
+  private get DEFAULT_DATA (): TaskRow {
     return {
       id: 0,
       status: TaskStatus.TODO,
@@ -306,7 +306,7 @@ export class Task implements TaskRow {
   /**
    * This is the standard result format from all the 'init' methods
    */
-  resultFromInit (hasChanges = false): TaskInitResult {
+  private resultFromInit (hasChanges = false): TaskInitResult {
     return {
       task: this,
       hasChanges,
@@ -327,7 +327,7 @@ export class Task implements TaskRow {
     return this
   }
 
-  getTypeSignifier () {
+  private getTypeSignifier () {
     if (this.isCompleted) return TaskEmoji.NONE // No need for signifier cluttering up the view for completed tasks
 
     const signifiers = [TaskType.PROJECT, TaskType.SOMEDAY, TaskType.WAITING_ON]
@@ -468,7 +468,7 @@ export class Task implements TaskRow {
 
   async renderMarkdown () {
     const el = document.createElement('div')
-    await MarkdownRenderer.render(this.tasks.app, this.text, el, '', this.markdownComponent)
+    await MarkdownRenderer.render(this.app, this.text, el, '', this.markdownComponent)
     this.renderedMarkdown = el.innerHTML
   }
 
@@ -545,9 +545,9 @@ export class Task implements TaskRow {
     subtask.line = line
     if (type) subtask.type = type
 
-    const tfile = this.tasks.app.vault.getFileByPath(this.path)
+    const tfile = this.app.vault.getFileByPath(this.path)
     if (tfile) {
-      await this.tasks.app.vault.process(tfile, data => {
+      await this.app.vault.process(tfile, data => {
         const lines = data.split('\n')
         lines.splice(line, 0, subtask.generateMarkdownTask())
         return lines.join('\n')

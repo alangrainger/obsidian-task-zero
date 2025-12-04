@@ -10,9 +10,8 @@ import { DatabaseEvent, dbEvents } from './classes/database-events'
 export default class TaskZeroPlugin extends Plugin {
   tasks!: Tasks
   settings!: TaskZeroSettings
-  view!: TaskZeroView
   userActivity!: DetectUser
-  updateQueue!: UpdateQueue
+  private updateQueue!: UpdateQueue
 
   async onload () {
     // Settings
@@ -99,7 +98,7 @@ export default class TaskZeroPlugin extends Plugin {
     }
   }
 
-  async activateView () {
+  private async activateView () {
     let leaf: WorkspaceLeaf | null
     const leaves = this.app.workspace.getLeavesOfType(TASK_ZERO_VIEW_TYPE)
     if (leaves.length > 0) {

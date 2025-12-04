@@ -27,9 +27,9 @@ const DATE_WORDS = {
 }
 
 export class MarkdownTaskParser {
-  plugin: TaskZeroPlugin
-  regex: { [key: string]: RegExp }
-  taskline = ''
+  private plugin: TaskZeroPlugin
+  private regex: { [key: string]: RegExp }
+  private taskline = ''
 
   constructor (plugin: TaskZeroPlugin) {
     this.plugin = plugin
@@ -47,7 +47,7 @@ export class MarkdownTaskParser {
     } as const
   }
 
-  get blockPrefix () {
+  private get blockPrefix () {
     return this.plugin.tasks.blockPrefix
   }
 
@@ -106,7 +106,7 @@ export class MarkdownTaskParser {
     return data
   }
 
-  getAndRemoveMatch (regex: RegExp): string {
+  private getAndRemoveMatch (regex: RegExp): string {
     let foundText = ''
     let matching = true
     // Remove multiple occurrences if they exist
@@ -122,36 +122,36 @@ export class MarkdownTaskParser {
     return foundText
   }
 
-  getId () {
+  private getId () {
     const id = this.getAndRemoveMatch(this.regex.id)
     return id ? parseInt(id, 10) : undefined
   }
 
-  getStatus () {
+  private getStatus () {
     return this.getAndRemoveMatch(this.regex.status) as TaskStatus
   }
 
-  isProject () {
+  private isProject () {
     return !!this.getAndRemoveMatch(this.regex.project)
   }
 
-  isSomeday () {
+  private isSomeday () {
     return !!this.getAndRemoveMatch(this.regex.someday)
   }
 
-  isWaitingOn () {
+  private isWaitingOn () {
     return !!this.getAndRemoveMatch(this.regex.waitingOn)
   }
 
-  getCreated () {
+  private getCreated () {
     return this.getAndRemoveMatch(this.regex.created)
   }
 
-  getDue () {
+  private getDue () {
     return this.getAndRemoveMatch(this.regex.due)
   }
 
-  getScheduled () {
+  private getScheduled () {
     // This is the normal ⏳ 2025-01-01 style
     const standard = this.getAndRemoveMatch(this.regex.scheduled)
     if (standard) return standard
@@ -188,11 +188,11 @@ export class MarkdownTaskParser {
     return date
   }
 
-  getCompleted () {
+  private getCompleted () {
     return this.getAndRemoveMatch(this.regex.completed)
   }
 
-  getExcluded () {
+  private getExcluded () {
     return this.getAndRemoveMatch(this.regex.excluded)
   }
 }

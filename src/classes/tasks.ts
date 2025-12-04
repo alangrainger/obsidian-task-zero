@@ -21,10 +21,9 @@ export type CacheUpdateItem = {
 export const TaskChangeEvent = 'tz:tasks-change'
 
 export class Tasks {
-  readonly tableName = 'tasks'
-  app: App
-  plugin: TaskZeroPlugin
-  db: Database
+  readonly app: App
+  readonly plugin: TaskZeroPlugin
+  readonly db: Database
   private noteUpdateQueue: Set<number> = new Set([])
   private readonly debounceQueueUpdate: () => void
 

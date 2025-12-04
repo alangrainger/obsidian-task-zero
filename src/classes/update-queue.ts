@@ -3,8 +3,8 @@ import { App, MarkdownView, TFile } from 'obsidian'
 import { debug } from '../functions'
 
 export class UpdateQueue {
-  app: App
-  plugin: TaskZeroPlugin
+  private readonly app: App
+  private readonly plugin: TaskZeroPlugin
   private readonly queue: string[]
   private cacheChangeInterval: NodeJS.Timeout
   private running = false
@@ -18,7 +18,7 @@ export class UpdateQueue {
     this.cacheChangeInterval = this.initQueue()
   }
 
-  initQueue () {
+  private initQueue () {
     clearInterval(this.cacheChangeInterval)
     this.cacheChangeInterval = setInterval(async () => {
       // Store the time the queue was last executed, so that we can identify if it fails
@@ -29,7 +29,7 @@ export class UpdateQueue {
     return this.cacheChangeInterval
   }
 
-  checkQueue () {
+  private checkQueue () {
     // If the queue hasn't run in the last 2 minutes, restart it
     if (this.plugin.settings.database.lastQueueCheck < Date.now() - 1000 * 60 * 2)
       this.initQueue()
@@ -59,7 +59,7 @@ export class UpdateQueue {
    * to the master device, processed, then synced back to the active device, potentially
    * messing up the note the user is actively typing on.
    */
-  async processQueue () {
+  private async processQueue () {
     if (this.running) return
 
     if (this.plugin.isMaster() && this.plugin.userActivity.isActive()) {

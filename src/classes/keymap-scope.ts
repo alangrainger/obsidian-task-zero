@@ -9,10 +9,10 @@ type Hotkey = {
 type HotkeyConfig = [Hotkey, callback: () => void]
 
 export class KeymapScope {
-  app: App
-  plugin: TaskZeroPlugin
-  scope: Scope
-  isActive = false
+  private readonly app: App
+  private readonly plugin: TaskZeroPlugin
+  readonly scope: Scope
+  private isActive = false
 
   constructor (plugin: TaskZeroPlugin, parent: Scope) {
     this.plugin = plugin
