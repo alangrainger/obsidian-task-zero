@@ -49,7 +49,7 @@ export class Tasks {
 
   taskLineRegex (id: number) {
     const prefix = this.blockPrefix
-    return new RegExp(`^[ \\t]*- \\[.][^$\n]+\\^${prefix}${id}[ \\t]*$`, 'm')
+    return new RegExp(`^[ \\t]*- \\[.][^\n]+\\^${prefix}${id}[ \\t]*$`, 'm')
   }
 
   async processTasksFromCacheUpdate (cacheUpdate: CacheUpdate) {
