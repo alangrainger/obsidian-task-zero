@@ -134,6 +134,10 @@ export class Task implements TaskRow {
     Object.keys(data).forEach(key => this[key] = data[key])
   }
 
+  get basename () {
+    return this.path?.match(/([^/]+).md$/)?.[1] || ''
+  }
+
   get isCompleted () {
     return this.status === TaskStatus.DONE
   }
@@ -560,5 +564,9 @@ export class Task implements TaskRow {
 
   userIsActive () {
     this.#plugin.userActivity.updateActivity()
+  }
+
+  async openLink () {
+    return this.#app.workspace.openLinkText(this.basename, this.path)
   }
 }

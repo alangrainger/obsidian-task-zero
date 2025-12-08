@@ -9,15 +9,14 @@
   let { task, icon }: Props = $props()
 
   let href = $derived(task?.path?.replace(/\.md$/, ''))
-  let basename = $derived(task?.path?.match(/([^/]+).md$/)?.[1] || '')
-  let text = $derived(icon ? '📄' : basename)
+  let text = $derived(icon ? '📄' : task?.basename || '')
 
   function openLink (event: MouseEvent) {
     event.stopPropagation()
-    if (task?.path) void task.tasks.app.workspace.openLinkText(basename, task.path)
+    if (task?.path) void task.openLink()
   }
 </script>
 
 {#if task?.path}
-    <a onclick="{openLink}" {href} class="internal-link" title="{basename}">{text}</a>
+    <a onclick="{openLink}" {href} class="internal-link" title="{task.basename}">{text}</a>
 {/if}
