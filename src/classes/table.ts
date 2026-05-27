@@ -319,4 +319,19 @@ export class Database {
       this.#saveDb()
     }
   }
+
+  /**
+   * Mark an in-memory row as orphaned. Stamps it with our deviceId/now so the
+   * orphan state propagates to other devices via LWW, and triggers a debounced
+   * save so it persists to disk even if no other write happens.
+   *
+   * `update()` can't be used here because callers typically pass the same row
+   * reference that's already in #rows — fieldsMatch would see them as equal
+   * (same object) and skip the save.
+   */
+  markOrphaned (row: TaskRow, now: number) {
+    row.orphaned = now
+    this.#stampWrite(row)
+    this.#saveDb()
+  }
 }

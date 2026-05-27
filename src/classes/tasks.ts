@@ -1,6 +1,6 @@
 import { Task, TaskStatus, TaskType } from './task.svelte'
 import TaskZeroPlugin from '../main'
-import { type App, type CachedMetadata, debounce, type ListItemCache, TFile } from 'obsidian'
+import { type App, type CachedMetadata, debounce, type ListItemCache, type TAbstractFile, TFile } from 'obsidian'
 import { Database } from './table'
 import { DatabaseEvent, dbEvents } from './database-events'
 import { moment, debug, getOrCreateFile } from '../functions'
@@ -42,12 +42,16 @@ export class Tasks {
       if (file instanceof TFile) this.orphanTasksFromPath(file.path)
     }))
 
-    // Watch for sync-delivered changes to other devices' db files
-    plugin.registerEvent(this.app.vault.on('modify', file => {
+    // Watch for sync-delivered changes to other devices' db files. We listen
+    // for both `modify` (existing file changed) and `create` (a brand-new
+    // device file appears, e.g. a new device joined or first-sync arrived).
+    const handlePeerFile = (file: TAbstractFile) => {
       if (!(file instanceof TFile)) return
       if (!this.db.isDeviceFile(file.path) || this.db.isOwnFile(file.path)) return
       void this.#onPeerFileChanged(file.path)
-    }))
+    }
+    plugin.registerEvent(this.app.vault.on('modify', handlePeerFile))
+    plugin.registerEvent(this.app.vault.on('create', handlePeerFile))
   }
 
   async #onPeerFileChanged (path: string) {
@@ -312,10 +316,10 @@ export class Tasks {
         !keepIds.includes(row.id))
     if (!tasks.length) return
 
+    const now = moment().valueOf()
     tasks.forEach(task => {
       debug('Orphaning task ' + task.id)
-      task.orphaned = moment().valueOf()
-      this.db.update(task)
+      this.db.markOrphaned(task, now)
     })
     dbEvents.emit(DatabaseEvent.TasksExternalChange)
   }
@@ -340,10 +344,10 @@ export class Tasks {
         }
       } else if (!row.path) {
         // Orphan tasks with no associated note
-        row.orphaned = now
+        this.db.markOrphaned(row, now)
       } else if (deletedNotes.has(row.path)) {
         // We know this note no longer exists; orphan the task
-        row.orphaned = now
+        this.db.markOrphaned(row, now)
       } else if (existingNotes.has(row.path)) {
         // We know that this note exists, so there's nothing to orphan
       } else {
@@ -352,7 +356,7 @@ export class Tasks {
         if (file) {
           existingNotes.add(row.path)
         } else {
-          row.orphaned = now.valueOf()
+          this.db.markOrphaned(row, now)
           deletedNotes.add(row.path)
         }
       }
