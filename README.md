@@ -18,3 +18,14 @@ The goals of this project are:
 ## Documentation
 
 See here: [https://taskzero.alan.gr/getting-started](https://taskzero.alan.gr/getting-started)
+
+## How to install
+
+The plugin is currently going through the review process, so is not yet available in the plugin store. In the meantime, you can install it with BRAT:
+
+1. Install the **BRAT** plugin from the Community Plugins.
+2. Open the Settings page for BRAT.
+3. Click “Add Beta Plugin”.
+4. Paste in this address: `https://github.com/alangrainger/obsidian-task-zero`
+5. Choose `latest` under "Select a version".
+6. Click “Add Plugin”.
