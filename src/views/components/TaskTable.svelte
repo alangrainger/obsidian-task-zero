@@ -174,17 +174,17 @@
   }
 
   function clickRow (id: number, event: MouseEvent) {
-    const target = event.target as HTMLAnchorElement
-    if (target.closest('a')) {
-      if (target.href.startsWith('app')) {
-        plugin.app.workspace.openLinkText(target.innerText, '')
+    const anchor = (event.target as HTMLElement | null)?.closest('a')
+    if (anchor) {
+      if (anchor.href.startsWith('app://')) {
+        plugin.app.workspace.openLinkText(anchor.textContent ?? '', '')
       }
+      return
+    }
+    if (state.activeId === id) {
+      state.sidebar.open = !state.sidebar.open
     } else {
-      if (state.activeId === id) {
-        state.sidebar.open = !state.sidebar.open
-      } else {
-        state.activeId = id
-      }
+      state.activeId = id
     }
   }
 
