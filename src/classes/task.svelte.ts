@@ -239,7 +239,7 @@ export class Task implements TaskRow {
   }
 
   setData (data: TaskRow) {
-    Object.keys(data).forEach(key => this[key] = data[key])
+    Object.assign(this, data)
   }
 
   initFromId (id: string) {
@@ -546,7 +546,7 @@ export class Task implements TaskRow {
   }
 
   async renderMarkdown () {
-    const el = document.createElement('div')
+    const el = createDiv()
     await MarkdownRenderer.render(this.#app, this.text, el, '', this.markdownComponent)
     this.renderedMarkdown = el.innerHTML
   }

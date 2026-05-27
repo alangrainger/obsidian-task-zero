@@ -80,7 +80,7 @@ export class MoveToProjectModal extends Modal {
 
             dropdown.addOption('', tasksInProject.length ? 'Select task' : 'No tasks found in note')
             tasksInProject
-              .forEach(task => dropdown.addOption(task.id.toString(), task.text))
+              .forEach(task => { dropdown.addOption(task.id, task.text) })
             dropdown
               .setValue(this.otherTaskId)
               .onChange(value => this.otherTaskId = value)
@@ -107,7 +107,8 @@ export class MoveToProjectModal extends Modal {
             } else {
               // Move before or after a subtask in the project
               const otherTaskId = this.otherTaskId || undefined
-              let beforeTask, afterTask
+              let beforeTask: string | undefined
+              let afterTask: string | undefined
               if (this.position === 'before' && otherTaskId) beforeTask = otherTaskId
               if (this.position === 'after' && otherTaskId) afterTask = otherTaskId
               if (!beforeTask && !afterTask) afterTask = lastId

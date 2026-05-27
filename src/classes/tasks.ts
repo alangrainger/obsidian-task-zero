@@ -366,30 +366,31 @@ export class Tasks {
 }
 
 /**
- * Check that if the note contains the #exclude-all-tasks tag.
- * This checks for the tag both with and without the # symbol
+ * Check whether the note contains the #exclude-all-tasks tag (with or without
+ * the # prefix). Tags can appear in three shapes that all need handling:
+ *   - frontmatter.tags as an array of strings
+ *   - frontmatter.tags as an array of `{ tag: string }` objects
+ *   - body tags via Obsidian's cache.tags
  */
-export function noteIsExcluded (cacheUpdate: CacheUpdate, plugin: TaskZeroPlugin) {
+export function noteIsExcluded (cacheUpdate: CacheUpdate, plugin: TaskZeroPlugin): boolean {
   if (!cacheUpdate) return false
   const tag = plugin.settings.excludeTags.note.replace(/#/g, '')
-  const tags = [tag, `#${tag}`]
-  let standard: string[] = [], body: string[] = [], list: string[] = []
-  // The standard frontmatter tags array
-  try {
-    standard = (cacheUpdate.cache?.frontmatter?.tags || []).map((x: {
-      tag: string
-    }) => x.tag).filter((tag: string) => tags.includes(tag))
-  } catch (e) { debug(e) }
-  // If the tag exists in the body of the note
-  try {
-    body = (cacheUpdate.cache?.tags || []).map(x => x.tag).filter((tag: string) => tags.includes(tag))
-  } catch (e) { debug(e) }
-  // In case the user has put tags into the frontmatter with # symbol, causing them to become a list
-  try {
-    list = (cacheUpdate.cache?.frontmatter?.tags || []).filter((tag: string) => tags.includes(tag))
-  } catch (e) { debug(e) }
+  const tagsToMatch = [tag, `#${tag}`]
 
-  const excluded = standard?.length || body?.length || list?.length
+  const fmTagsRaw: unknown = cacheUpdate.cache?.frontmatter?.tags
+  const fmTagsArr: unknown[] = Array.isArray(fmTagsRaw) ? fmTagsRaw : []
+
+  const isTagObj = (x: unknown): x is { tag: string } =>
+    typeof x === 'object' && x !== null && typeof (x as { tag?: unknown }).tag === 'string'
+
+  const matchedFmStrings = fmTagsArr.filter((x): x is string => typeof x === 'string')
+    .filter(t => tagsToMatch.includes(t))
+  const matchedFmObjects = fmTagsArr.filter(isTagObj)
+    .filter(x => tagsToMatch.includes(x.tag))
+  const matchedBody = (cacheUpdate.cache?.tags ?? [])
+    .filter(t => tagsToMatch.includes(t.tag))
+
+  const excluded = matchedFmStrings.length + matchedFmObjects.length + matchedBody.length > 0
   if (excluded) debug(`Note ${cacheUpdate.file.path} is excluded from processing because it has the tag #${tag}`)
-  return !!excluded
+  return excluded
 }

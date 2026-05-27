@@ -2,22 +2,16 @@ import { moment as momentModule } from 'obsidian'
 import type { TaskRow } from './classes/task.svelte'
 import { type App, TFile } from 'obsidian'
 import type { MarkdownTaskElements } from './classes/markdown-task-parser'
-import type { Moment } from 'moment'
 
 /*
-This is a fix for moment Typescript error when imported from Obsidian:
-
-TS2349: This expression is not callable.
-Type typeof moment has no call signatures.
-
-I could not resolve the issue in any other way. I believe the issue comes
-when adding Svelte to the sample plugin. I checked other plugin templates
-using Svelte and they had the same issue. For example
-https://github.com/StevenStavrakis/obsidian-plugin-svelte-template
-
-I do not have the skill or knowledge to solve this problem.
- */
+ Obsidian's TypeScript declaration types `moment` with the type of the moment
+ module namespace (`typeof Moment` from `import * as Moment from 'moment'`),
+ which TypeScript considers non-callable. At runtime it IS the callable
+ moment function. The `.default || ` fallback handles either shape (bundlers
+ sometimes wrap CJS exports under `.default`).
+*/
 export const moment = momentModule.default || momentModule
+export type Moment = ReturnType<typeof moment>
 
 export const debug: { (...message: unknown[]): void, enabled: boolean } = Object.assign(
   function (...message: unknown[]) {
@@ -30,12 +24,12 @@ export function assignExisting (
   target: TaskRow,
   ...sources: (TaskRow | MarkdownTaskElements | undefined)[]
 ): TaskRow {
+  const dst = target as unknown as Record<string, unknown>
   for (const source of sources) {
     if (!source) continue
-    for (const key in source) {
-      const value = source[key]
+    for (const [key, value] of Object.entries(source)) {
       if (value !== undefined && value !== null) {
-        target[key] = value
+        dst[key] = value
       }
     }
   }

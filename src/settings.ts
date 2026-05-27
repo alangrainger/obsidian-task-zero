@@ -52,7 +52,8 @@ const taskElements: TaskElement[] = [
   }
 ]
 
-const tabSettings = [
+type StringTabKey = 'label' | 'tag' | 'icon'
+const tabSettings: { key: StringTabKey, name: string, placeholder: string }[] = [
   {
     key: 'label',
     name: 'Title',

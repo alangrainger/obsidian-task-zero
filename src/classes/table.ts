@@ -1,6 +1,5 @@
 import { debounce } from 'obsidian'
-import moment from 'moment'
-import { debug } from '../functions'
+import { debug, moment } from '../functions'
 import type TaskZeroPlugin from '../main'
 import type { TaskRow } from './task.svelte'
 

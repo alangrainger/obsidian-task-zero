@@ -5,16 +5,16 @@ export class DetectUser {
   constructor () {
     // Keyboard events
     const keyHandler = () => this.updateActivity()
-    document.addEventListener('keydown', keyHandler)
+    activeDocument.addEventListener('keydown', keyHandler)
     this.#activityListeners.push(() =>
-      document.removeEventListener('keydown', keyHandler)
+      activeDocument.removeEventListener('keydown', keyHandler)
     )
 
     // Mouse events
     const mouseHandler = () => this.updateActivity()
-    document.addEventListener('click', mouseHandler)
+    activeDocument.addEventListener('click', mouseHandler)
     this.#activityListeners.push(() => {
-      document.removeEventListener('click', mouseHandler)
+      activeDocument.removeEventListener('click', mouseHandler)
     })
   }
 

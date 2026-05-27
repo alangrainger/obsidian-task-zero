@@ -7,7 +7,7 @@ type TaskSuggestProps = {
   inputEl: HTMLInputElement
   filter: (task: Task) => boolean
   sort: (a: Task, b: Task) => number
-  onSelect: (selectedTask: Task) => any
+  onSelect: (selectedTask: Task) => void
 }
 
 /**
@@ -18,7 +18,7 @@ export class TaskSuggest extends AbstractInputSuggest<Task> {
   plugin: TaskZeroPlugin
   tasks: Task[]
   inputEl: HTMLInputElement
-  callback: (selectedTask: Task) => any
+  callback: (selectedTask: Task) => void
 
   constructor (taskSuggestProps: TaskSuggestProps) {
     super(taskSuggestProps.plugin.app, taskSuggestProps.inputEl)

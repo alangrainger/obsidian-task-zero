@@ -6,7 +6,7 @@ export class UpdateQueue {
   readonly #app: App
   readonly #plugin: TaskZeroPlugin
   readonly #queue: string[]
-  #cacheChangeInterval: NodeJS.Timeout
+  #cacheChangeInterval: number
   #running = false
 
   constructor (plugin: TaskZeroPlugin) {
@@ -19,12 +19,14 @@ export class UpdateQueue {
   }
 
   #initQueue () {
-    clearInterval(this.#cacheChangeInterval)
-    this.#cacheChangeInterval = setInterval(async () => {
+    activeWindow.clearInterval(this.#cacheChangeInterval)
+    this.#cacheChangeInterval = activeWindow.setInterval(() => {
       // Store the time the queue was last executed, so that we can identify if it fails
       this.#plugin.settings.database.lastQueueCheck = Date.now()
-      await this.#processQueue()
-      this.#plugin.tasks.cleanOrphans()
+      void (async () => {
+        await this.#processQueue()
+        this.#plugin.tasks.cleanOrphans()
+      })()
     }, 2000)
     return this.#cacheChangeInterval
   }
@@ -87,6 +89,6 @@ export class UpdateQueue {
   }
 
   unload () {
-    clearInterval(this.#cacheChangeInterval)
+    activeWindow.clearInterval(this.#cacheChangeInterval)
   }
 }

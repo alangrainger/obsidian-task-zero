@@ -93,7 +93,7 @@ export default class TaskZeroPlugin extends Plugin {
     this.#updateQueue.unload()
     this.userActivity.unload()
     dbEvents.destroy()
-    document.body.removeClass('task-zero-hide-plugin-folder')
+    activeDocument.body.removeClass('task-zero-hide-plugin-folder')
     delete window.tz
   }
 
@@ -107,17 +107,17 @@ export default class TaskZeroPlugin extends Plugin {
 
   applyRootClass () {
     if (this.settings.styleBlockId) {
-      document.body.addClass('task-zero')
+      activeDocument.body.addClass('task-zero')
     } else {
-      document.body.removeClass('task-zero')
+      activeDocument.body.removeClass('task-zero')
     }
   }
 
   applyPluginFolderVisibility () {
     if (this.settings.hidePluginFolder) {
-      document.body.addClass('task-zero-hide-plugin-folder')
+      activeDocument.body.addClass('task-zero-hide-plugin-folder')
     } else {
-      document.body.removeClass('task-zero-hide-plugin-folder')
+      activeDocument.body.removeClass('task-zero-hide-plugin-folder')
     }
   }
 
