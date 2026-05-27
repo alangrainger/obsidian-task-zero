@@ -46,7 +46,7 @@
     },
     viewIsActive: false
   })
-  let tableRows: HTMLTableRowElement[] = []
+  let tbodyEl: HTMLTableSectionElement | undefined
 
   let activeIndex = $derived(state.tasks.findIndex(x => x.id === state.activeId) || 0)
   let activeTask = $derived(state.tasks[activeIndex])
@@ -73,13 +73,13 @@
   })
 
   $effect(() => {
-    if (state.activeId && tableRows[state.activeId]) {
-      tableRows[state.activeId].scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'nearest'
-      })
-    }
+    if (!state.activeId || !tbodyEl) return
+    const row = tbodyEl.querySelector<HTMLTableRowElement>(`tr[data-task-id="${state.activeId}"]`)
+    row?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest'
+    })
   })
 
   async function openActiveRow () {
@@ -301,10 +301,10 @@
             <th></th>
         </tr>
         </thead>-->
-        <tbody>
+        <tbody bind:this={tbodyEl}>
         {#each state.tasks as task}
             <tr
-                    bind:this={tableRows[task.id]}
+                    data-task-id={task.id}
                     onclick={event => clickRow(task.id, event)}
                     class:task-zero-inbox-row={(isWarning(task)) && task.id !== state.activeId}
                     class:task-zero-active-row={task.id === state.activeId}
