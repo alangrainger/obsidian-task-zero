@@ -61,41 +61,49 @@ export class Database {
   }
 
   /**
-   * Update a row
-   * @param data
+   * Update an existing row. Returns the row if anything changed; null if
+   * the id wasn't found or no fields differ.
    */
   update (data: TaskRow) {
     if (!data.id) return null
     // Update the autoincrement in case of imported or manually edited tasks
     this.#data.autoincrement = Math.max(this.#data.autoincrement, data.id + 1)
     const index = this.#data.rows.findIndex(x => x.id === data.id)
-    if (index !== -1) {
-      // Existing row found with this ID
-      const existing = this.#data.rows[index]
-      // Don't update if the data is the same
-      if (Object.keys(data).every(key => existing[key] === data[key])) {
-        return null
-      }
-      this.#data.rows[index] = data
-    } else {
-      // A task with this ID was not found in the database
-      data.created = moment().format()
-      this.#data.rows.push(data)
-    }
+    if (index === -1) return null
+    const existing = this.#data.rows[index]
+    if (Object.keys(data).every(key => existing[key] === data[key])) return null
+    this.#data.rows[index] = data
     this.#saveDb()
     return data
   }
 
   /**
-   * Insert or Update a row
+   * Upsert a row with a specific id: update if the id exists, otherwise
+   * insert with that id (preserving any caller-supplied `created`).
+   */
+  upsert (data: TaskRow) {
+    if (!data.id) return null
+    this.#data.autoincrement = Math.max(this.#data.autoincrement, data.id + 1)
+    const index = this.#data.rows.findIndex(x => x.id === data.id)
+    if (index === -1) {
+      if (!data.created) data.created = moment().format()
+      this.#data.rows.push(data)
+      this.#saveDb()
+      return data
+    }
+    const existing = this.#data.rows[index]
+    if (!Object.keys(data).every(key => existing[key] === data[key])) {
+      this.#data.rows[index] = data
+      this.#saveDb()
+    }
+    return data
+  }
+
+  /**
+   * Insert with auto-generated id (when data.id is 0) or upsert with the given id.
    */
   insertOrUpdate (data: TaskRow) {
-    if (data.id) {
-      this.update(data)
-      return data
-    } else {
-      return this.insert(data)
-    }
+    return data.id ? this.upsert(data) : this.insert(data)
   }
 
   delete (id: number) {
