@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, type App, TAbstractFile, TFile, TFolder } from 'obsidian'
+import { AbstractInputSuggest, type App, TFile } from 'obsidian'
 
 export class FileSuggest extends AbstractInputSuggest<TFile> {
   callback: (file: TFile) => void
@@ -9,21 +9,9 @@ export class FileSuggest extends AbstractInputSuggest<TFile> {
   }
 
   getSuggestions (inputStr: string): TFile[] {
-    const abstractFiles = this.app.vault.getAllLoadedFiles()
-    const files: TFile[] = []
-    const lowerCaseInputStr = inputStr.toLowerCase()
-
-    abstractFiles.forEach((file: TAbstractFile) => {
-      if (
-        file instanceof TFile &&
-        file.extension === 'md' &&
-        file.path.toLowerCase().contains(lowerCaseInputStr)
-      ) {
-        files.push(file)
-      }
-    })
-
-    return files
+    const lower = inputStr.toLowerCase()
+    return this.app.vault.getMarkdownFiles()
+      .filter(file => file.path.toLowerCase().contains(lower))
   }
 
   renderSuggestion (file: TFile, el: HTMLElement): void {
@@ -33,34 +21,6 @@ export class FileSuggest extends AbstractInputSuggest<TFile> {
   selectSuggestion (file: TFile): void {
     this.setValue(file.path)
     this.callback(file)
-    this.close()
-  }
-}
-
-export class FolderSuggest extends AbstractInputSuggest<TFolder> {
-  getSuggestions (inputStr: string): TFolder[] {
-    const abstractFiles = this.app.vault.getAllLoadedFiles()
-    const folders: TFolder[] = []
-    const lowerCaseInputStr = inputStr.toLowerCase()
-
-    abstractFiles.forEach((folder: TAbstractFile) => {
-      if (
-        folder instanceof TFolder &&
-        folder.path.toLowerCase().contains(lowerCaseInputStr)
-      ) {
-        folders.push(folder)
-      }
-    })
-
-    return folders
-  }
-
-  renderSuggestion (file: TFolder, el: HTMLElement): void {
-    el.setText(file.path)
-  }
-
-  selectSuggestion (file: TFolder): void {
-    this.setValue(file.path)
     this.close()
   }
 }

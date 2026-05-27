@@ -120,7 +120,10 @@ body.task-zero .HyperMD-task-line .cm-blockid {
 /*
 Hide the plugin's data folder from the file explorer when the
 'Hide plugin folder' setting is on. Toggled via the body class.
+Targets the folder title and its sibling children container directly
+to avoid :has(), which can trigger broad selector invalidation.
 */
-body.task-zero-hide-plugin-folder .nav-folder:has(> .nav-folder-title[data-path="_taskzero"]) {
+body.task-zero-hide-plugin-folder .nav-folder-title[data-path="_taskzero"],
+body.task-zero-hide-plugin-folder .nav-folder-title[data-path="_taskzero"] + .nav-folder-children {
     display: none;
 }
