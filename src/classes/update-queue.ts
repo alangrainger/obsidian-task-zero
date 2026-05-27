@@ -53,16 +53,15 @@ export class UpdateQueue {
   }
 
   /**
-   * Changes only happen on the master device, and only if the user is actively using
-   * that same device. This is important to prevent race conditions where the user is
-   * making a change on a different device, and that changed data is being synced back
-   * to the master device, processed, then synced back to the active device, potentially
-   * messing up the note the user is actively typing on.
+   * Process queued markdown changes. Only runs when the user is actively using
+   * this device, to prevent race conditions where the user is editing on a
+   * different device and the synced edits are being processed here at the
+   * same time.
    */
   async #processQueue () {
     if (this.#running) return
 
-    if (this.#plugin.isMaster() && this.#plugin.userActivity.isActive()) {
+    if (this.#plugin.userActivity.isActive()) {
       this.#running = true
       for (const cacheItemPath of this.#queue) {
         try {

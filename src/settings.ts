@@ -92,7 +92,6 @@ export interface TaskZeroSettings {
     task: string;
   }
   tasklistTabs: Tab[];
-  masterAppId: string;
   deviceId: string;
   database: {
     tasks: {
@@ -180,7 +179,6 @@ export const DEFAULT_SETTINGS: TaskZeroSettings = {
     task: '#exclude'
   },
   tasklistTabs: [],
-  masterAppId: '',
   deviceId: '',
   database: {
     tasks: {
@@ -203,30 +201,12 @@ export class DoSettingTab extends PluginSettingTab {
     this.plugin = plugin
     this.settings = plugin.settings
     debug.enabled = this.settings.debug
-
-    // Set the initial master device
-    // If masterAppId is blank but there are existing database rows,
-    // it's because someone has revoked a master device, so we don't
-    // want to automatically set a new one.
-    if (!this.settings.masterAppId && !this.settings.database.tasks.rows.length) {
-      this.settings.masterAppId = this.app.appId
-    }
   }
 
   display (): void {
     const { containerEl } = this
 
     containerEl.empty()
-
-    if (!this.plugin.isMaster()) {
-      new Setting(containerEl)
-        .setHeading()
-        .setName('This is not the master device!')
-        .setDesc('Changes made by this device will not be saved. To make this device the master, you need to first revoke the current master device.')
-      new Setting(containerEl)
-        .setHeading()
-        .setName('Capture notes')
-    }
 
     new Setting(containerEl)
       .setName('Default task note')
@@ -337,32 +317,6 @@ export class DoSettingTab extends PluginSettingTab {
       .setHeading()
       .setName('Advanced settings')
       .setDesc('Most users will not need to change these settings. Proceed with caution.')
-
-    if (!this.settings.masterAppId) {
-      new Setting(containerEl)
-        .setName('Set as master device')
-        .setDesc('Set this device as the master device.')
-        .addButton(button => button
-          .setButtonText('Set as master device')
-          .setCta()
-          .onClick(async () => {
-            this.settings.masterAppId = this.app.appId
-            await this.plugin.saveSettings()
-            this.display()
-          }))
-    } else {
-      new Setting(containerEl)
-        .setName('Revoke master device')
-        .setDesc('Removes the current master device, so you can set a new one.')
-        .addButton(button => button
-          .setButtonText('Revoke master device')
-          .setWarning()
-          .onClick(async () => {
-            this.settings.masterAppId = ''
-            await this.plugin.saveSettings()
-            this.display()
-          }))
-    }
 
     new Setting(containerEl)
       .setName('Task block prefix')

@@ -296,6 +296,21 @@ export class Database {
     return data.id ? this.upsert(data) : this.insert(data)
   }
 
+  /**
+   * Insert a row from another device's namespace whose authoritative version
+   * hasn't synced yet. The caller pre-fills `updatedBy`/`updatedAt` with low
+   * placeholder values so that when the real db file arrives, its row wins on
+   * LWW merge. We do NOT call `#stampWrite` here, and we don't write the file
+   * either (the row's `updatedBy` won't match our deviceId filter anyway).
+   */
+  insertSpeculative (data: TaskRow): TaskRow | null {
+    if (!data.id) return null
+    if (this.#rows.findIndex(x => x.id === data.id) !== -1) return null
+    if (!data.created) data.created = moment().format()
+    this.#rows.push(data)
+    return data
+  }
+
   delete (id: string) {
     const index = this.#rows.findIndex(x => x.id === id)
     if (index !== -1) {

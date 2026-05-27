@@ -361,6 +361,25 @@ export class Task implements TaskRow {
     // Are there any changes from the DB record, and/or is a new record?
     const hasChanges = !existing || Object.keys(record).some(key => record[key] !== existing[key])
 
+    // If this markdown task references another device's block ID but we don't
+    // have the row yet (their db-XX.json hasn't synced), insert it speculatively
+    // with low-priority sync metadata so the real row wins when it arrives.
+    const myDeviceId = this.#plugin.deviceId
+    const idPrefix = record.id.slice(0, 2)
+    const isForeignNewFormat = /^[a-z]{2}$/.test(idPrefix) && idPrefix !== myDeviceId
+    if (!existing && isForeignNewFormat) {
+      record.updatedBy = idPrefix
+      record.updatedAt = 1
+      const result = this.#tasks.db.insertSpeculative(record)
+      if (!result) {
+        this.reset()
+        return this.#resultFromInit(false)
+      }
+      this.setData(result)
+      // No `hasChanges=true` — we don't want this row to drive a markdown rewrite
+      return this.#resultFromInit(false)
+    }
+
     const result = this.#tasks.db.insertOrUpdate(record)
     if (!result) {
       // Unable to insert data. Reset to default data, which will show task.valid() === false
@@ -420,19 +439,19 @@ export class Task implements TaskRow {
 
     // Scheduled date
     let scheduled = ''
-    if (this.scheduled && (displayOptions.scheduled === DisplayOption.EMOJI || !this.#plugin.isMaster())) {
+    if (this.scheduled && displayOptions.scheduled === DisplayOption.EMOJI) {
       scheduled = TaskEmoji.SCHEDULED + ' ' + this.scheduled
     }
 
     // Due date
     let due = ''
-    if (this.due && (displayOptions.due === DisplayOption.EMOJI || !this.#plugin.isMaster())) {
+    if (this.due && displayOptions.due === DisplayOption.EMOJI) {
       due = TaskEmoji.DUE + ' ' + this.due
     }
 
     // Completed date
     let completed = ''
-    if (this.status === TaskStatus.DONE && (displayOptions.completed === DisplayOption.EMOJI || !this.#plugin.isMaster())) {
+    if (this.status === TaskStatus.DONE && displayOptions.completed === DisplayOption.EMOJI) {
       const date = this.completed ? moment(this.completed) : moment()
       completed = TaskEmoji.COMPLETED + ' ' + date.format('YYYY-MM-DD')
     }
@@ -611,8 +630,6 @@ export class Task implements TaskRow {
         if (displayOptions.waitingOn === DisplayOption.TAG) {
           return '#' + TaskType.WAITING_ON
         } else if (displayOptions.waitingOn === DisplayOption.EMOJI) {
-          return TaskEmoji.WAITING_ON
-        } else if (!this.#plugin.isMaster()) {
           return TaskEmoji.WAITING_ON
         } else {
           return ''
