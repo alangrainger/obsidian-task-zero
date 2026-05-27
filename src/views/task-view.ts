@@ -50,9 +50,8 @@ export class TaskZeroView extends ItemView {
   }
 
   async onClose () {
-    this.table?.unmount()
     this.disableAllScopes()
-    return unmount(Table)
+    if (this.table) unmount(this.table)
   }
 
   /**

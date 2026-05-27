@@ -8,7 +8,7 @@
   import Sidebar from './Sidebar.svelte'
   import Checkbox from './Checkbox.svelte'
 
-  import { onMount, tick } from 'svelte'
+  import { onDestroy, onMount, tick } from 'svelte'
   import type TaskZeroPlugin from '../../main'
   import { DefaultTabs, type State, type Tab } from '../view-types'
   import { DatabaseEvent, dbEvents } from '../../classes/database-events'
@@ -280,23 +280,15 @@
     refresh(true)
   })
 
-  /**
-   * Runs when this component is unmounted/destroyed, and is called from task-view.ts
-   *
-   * I couldn't see how to fire this from onDestroy() or from returning
-   * a function from onMount as per the docs: https://svelte.dev/docs/svelte/lifecycle-hooks#onMount
-   * which is why I've done it this way
-   */
-  export function unmount () {
+  onDestroy(() => {
     dbEvents.off(DatabaseEvent.TasksExternalChange, refresh)
     dbEvents.off(DatabaseEvent.TaskToggled, debounceRefresh)
     dbEvents.off(DatabaseEvent.OpenTasklistView, () => state.viewIsActive = true)
     dbEvents.off(DatabaseEvent.TasksChanged, () => {
       if (!plugin.userActivity.isActive()) refresh()
     })
-    view.disableAllScopes()
     plugin.app.workspace.off('active-leaf-change', watchLeafChanges)
-  }
+  })
 
   /**
    * Watch for the view to become active and set the reactive state property
