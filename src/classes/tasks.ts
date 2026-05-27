@@ -145,6 +145,14 @@ export class Tasks {
   }
 
   /**
+   * Does this task have any direct child that is not orphaned and not completed?
+   */
+  hasActiveDirectChildren (parentId: number): boolean {
+    return this.db.rows().some(row =>
+      row.parent === parentId && row.status !== TaskStatus.DONE && !row.orphaned)
+  }
+
+  /**
    * This is the main task list that a user works from, in opinionated GTD order
    */
   getTasklist () {
@@ -163,9 +171,7 @@ export class Tasks {
       // Inbox tasks
       .concat(allTasks.filter(task => task.type === TaskType.INBOX))
       // Projects that have no next action (i.e. no sub-tasks)
-      .concat(allTasks.filter(task => task.type === TaskType.PROJECT)
-        .filter(project => !this.db.rows().filter(subtask => subtask.parent === project.id && subtask.status !== TaskStatus.DONE && !subtask.orphaned).length
-        ))
+      .concat(allTasks.filter(task => task.type === TaskType.PROJECT && !this.hasActiveDirectChildren(task.id)))
       // Next Actions
       .concat(allTasks.filter(task => task.type === TaskType.NEXT_ACTION))
       // Waiting-On
