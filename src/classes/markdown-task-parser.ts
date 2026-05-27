@@ -34,7 +34,7 @@ export class MarkdownTaskParser {
   constructor (plugin: TaskZeroPlugin) {
     this.#plugin = plugin
     this.#regex = {
-      id: new RegExp(`\\^${this.#blockPrefix}(\\d+)\\s*$`),
+      id: new RegExp(`\\^${this.#blockPrefix}([A-Za-z0-9]+)\\s*$`),
       status: /^\s*-\s+\[(.)]\s+/,
       project: new RegExp(`\\s+(${TaskEmoji.PROJECT}|#${TaskType.PROJECT})[^\\w-]`),
       someday: new RegExp(`\\s+(${TaskEmoji.SOMEDAY}|#${TaskType.SOMEDAY})[^\\w-]`),
@@ -100,7 +100,7 @@ export class MarkdownTaskParser {
     const id = this.#getId()
     // Process remaining elements
     const data = this.processText(this.#taskline)
-    data.parsed.id = id || 0
+    data.parsed.id = id || ''
     data.parsed.status = status
 
     return data
@@ -119,8 +119,7 @@ export class MarkdownTaskParser {
   }
 
   #getId () {
-    const id = this.#getAndRemoveMatch(this.#regex.id)
-    return id ? parseInt(id, 10) : undefined
+    return this.#getAndRemoveMatch(this.#regex.id) || undefined
   }
 
   #getStatus () {

@@ -1,51 +1,143 @@
 import { debounce } from 'obsidian'
-import { TaskChangeEvent } from './tasks'
 import moment from 'moment'
 import { debug } from '../functions'
 import type TaskZeroPlugin from '../main'
 import type { TaskRow } from './task.svelte'
 
-type Data = {
+const SYNC_FOLDER = '_taskzero'
+
+type DeviceFileData = {
+  appId: string
+  deviceId: string
   rows: TaskRow[]
-  autoincrement: number
 }
 
 export class Database {
   #plugin: TaskZeroPlugin
-  #data: Data
-  readonly #dataChanged: Event
+  #rows: TaskRow[] = []
+  #loaded = false
   readonly #saveDb: () => void
 
   constructor (plugin: TaskZeroPlugin) {
     this.#plugin = plugin
-    this.#dataChanged = new Event(TaskChangeEvent)
-
-    // Load data
-    this.#data = this.#plugin.settings.database.tasks as Data
-
-    // Double-check the autoincrement
-    const existing = Math.max(...this.#data.rows.map(x => x.id)) || 0
-    this.#data.autoincrement = Math.max(this.#data.autoincrement, existing + 1)
 
     // Set up debounce for database write to disk
-    this.#saveDb = debounce(async () => {
-      dispatchEvent(this.#dataChanged)
-      await this.#plugin.saveSettings()
+    this.#saveDb = debounce(() => {
+      void this.#writeDeviceFile()
     }, 3000)
   }
 
+  /**
+   * Async load step: read this device's sync file, or migrate from the legacy
+   * data.json rows if no device file exists yet.
+   */
+  async load () {
+    const path = this.#filePath()
+    const adapter = this.#plugin.app.vault.adapter
+    try {
+      if (await adapter.exists(path)) {
+        const contents = await adapter.read(path)
+        const data = JSON.parse(contents) as DeviceFileData
+        this.#rows = Array.isArray(data.rows) ? data.rows : []
+      } else {
+        // Legacy migration: copy rows out of settings.database.tasks.rows
+        const legacy = this.#plugin.settings.database.tasks
+        this.#rows = Array.isArray(legacy?.rows) ? [...legacy.rows] : []
+      }
+    } catch (e) {
+      debug('Failed to load device file, starting empty', e)
+      this.#rows = []
+    }
+
+    this.#migrateLegacyIds()
+    this.#backfillSyncMetadata()
+    this.#loaded = true
+
+    // Persist the initial state so the device file exists going forward
+    await this.#writeDeviceFile()
+  }
+
+  #filePath () {
+    return `${SYNC_FOLDER}/db-${this.#plugin.deviceId}.json`
+  }
+
+  async #ensureFolder () {
+    const adapter = this.#plugin.app.vault.adapter
+    if (!(await adapter.exists(SYNC_FOLDER))) {
+      await adapter.mkdir(SYNC_FOLDER)
+    }
+  }
+
+  async #writeDeviceFile () {
+    if (!this.#loaded) return
+    try {
+      await this.#ensureFolder()
+      const data: DeviceFileData = {
+        appId: this.#plugin.app.appId,
+        deviceId: this.#plugin.deviceId,
+        rows: this.#rows
+      }
+      await this.#plugin.app.vault.adapter.write(this.#filePath(), JSON.stringify(data, null, 2))
+    } catch (e) {
+      debug('Failed to write device file', e)
+    }
+  }
+
+  #migrateLegacyIds () {
+    for (const row of this.#rows) {
+      if (typeof row.id === 'number') row.id = String(row.id)
+      if (typeof row.parent === 'number') {
+        row.parent = row.parent === 0 ? '' : String(row.parent)
+      }
+    }
+  }
+
+  #backfillSyncMetadata () {
+    const now = Date.now()
+    const deviceId = this.#plugin.deviceId
+    for (const row of this.#rows) {
+      if (row.updatedAt === undefined) row.updatedAt = now
+      if (row.updatedBy === undefined) row.updatedBy = deviceId
+    }
+  }
+
+  /**
+   * Compare two rows ignoring sync-metadata fields that are managed by
+   * the write methods themselves.
+   */
+  #fieldsMatch (a: TaskRow, b: TaskRow) {
+    return Object.keys(a).every(key =>
+      key === 'updatedAt' || key === 'updatedBy' || a[key] === b[key])
+  }
+
+  #stampWrite (data: TaskRow) {
+    data.updatedAt = Date.now()
+    data.updatedBy = this.#plugin.deviceId
+  }
+
   rows () {
-    return this.#data.rows
+    return this.#rows
   }
 
-  getRow (id: number) {
-    if (id) return this.#data.rows.find(row => row.id === id)
+  getRow (id: string) {
+    if (id) return this.#rows.find(row => row.id === id)
   }
 
-  #getAutoincrementId () {
-    const id = this.#data.autoincrement
-    this.#data.autoincrement++
-    return id
+  /**
+   * Generate the next task id for this device: `<deviceId><n>` where n is
+   * the highest existing numeric suffix among this device's tasks, plus 1.
+   */
+  #nextTaskId (): string {
+    const deviceId = this.#plugin.deviceId
+    let max = 0
+    for (const row of this.#rows) {
+      if (typeof row.id !== 'string' || !row.id.startsWith(deviceId)) continue
+      const suffix = row.id.slice(deviceId.length)
+      if (!/^\d+$/.test(suffix)) continue
+      const num = parseInt(suffix, 10)
+      if (num > max) max = num
+    }
+    return deviceId + (max + 1)
   }
 
   insert (data: TaskRow) {
@@ -53,8 +145,9 @@ export class Database {
       debug('Insert should not include a row ID', data)
       return null
     } else {
-      data.id = this.#getAutoincrementId()
-      this.#data.rows.push(data)
+      data.id = this.#nextTaskId()
+      this.#stampWrite(data)
+      this.#rows.push(data)
       this.#saveDb()
       return data
     }
@@ -66,13 +159,12 @@ export class Database {
    */
   update (data: TaskRow) {
     if (!data.id) return null
-    // Update the autoincrement in case of imported or manually edited tasks
-    this.#data.autoincrement = Math.max(this.#data.autoincrement, data.id + 1)
-    const index = this.#data.rows.findIndex(x => x.id === data.id)
+    const index = this.#rows.findIndex(x => x.id === data.id)
     if (index === -1) return null
-    const existing = this.#data.rows[index]
-    if (Object.keys(data).every(key => existing[key] === data[key])) return null
-    this.#data.rows[index] = data
+    const existing = this.#rows[index]
+    if (this.#fieldsMatch(existing, data)) return null
+    this.#stampWrite(data)
+    this.#rows[index] = data
     this.#saveDb()
     return data
   }
@@ -83,33 +175,34 @@ export class Database {
    */
   upsert (data: TaskRow) {
     if (!data.id) return null
-    this.#data.autoincrement = Math.max(this.#data.autoincrement, data.id + 1)
-    const index = this.#data.rows.findIndex(x => x.id === data.id)
+    const index = this.#rows.findIndex(x => x.id === data.id)
     if (index === -1) {
       if (!data.created) data.created = moment().format()
-      this.#data.rows.push(data)
+      this.#stampWrite(data)
+      this.#rows.push(data)
       this.#saveDb()
       return data
     }
-    const existing = this.#data.rows[index]
-    if (!Object.keys(data).every(key => existing[key] === data[key])) {
-      this.#data.rows[index] = data
+    const existing = this.#rows[index]
+    if (!this.#fieldsMatch(existing, data)) {
+      this.#stampWrite(data)
+      this.#rows[index] = data
       this.#saveDb()
     }
     return data
   }
 
   /**
-   * Insert with auto-generated id (when data.id is 0) or upsert with the given id.
+   * Insert with auto-generated id (when data.id is empty) or upsert with the given id.
    */
   insertOrUpdate (data: TaskRow) {
     return data.id ? this.upsert(data) : this.insert(data)
   }
 
-  delete (id: number) {
-    const index = this.#data.rows.findIndex(x => x.id === id)
+  delete (id: string) {
+    const index = this.#rows.findIndex(x => x.id === id)
     if (index !== -1) {
-      this.#data.rows.splice(index, 1)
+      this.#rows.splice(index, 1)
       debug('Deleted task ' + id)
       this.#saveDb()
     }

@@ -106,7 +106,7 @@ export class MoveToProjectModal extends Modal {
               void this.taskToMove.move(this.projectTask.path, undefined, lastId)
             } else {
               // Move before or after a subtask in the project
-              const otherTaskId = parseInt(this.otherTaskId, 10) || undefined
+              const otherTaskId = this.otherTaskId || undefined
               let beforeTask, afterTask
               if (this.position === 'before' && otherTaskId) beforeTask = otherTaskId
               if (this.position === 'after' && otherTaskId) afterTask = otherTaskId

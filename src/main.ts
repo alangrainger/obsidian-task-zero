@@ -18,12 +18,14 @@ export default class TaskZeroPlugin extends Plugin {
   async onload () {
     // Settings
     await this.loadSettings()
+    this.ensureDeviceId()
     this.addSettingTab(new DoSettingTab(this.app, this))
     this.applyRootClass()
     this.userActivity = new DetectUser()
     this.#updateQueue = new UpdateQueue(this)
 
     this.tasks = new Tasks(this)
+    await this.tasks.load()
 
     this.registerView(
       TASK_ZERO_VIEW_TYPE,
@@ -70,7 +72,7 @@ export default class TaskZeroPlugin extends Plugin {
 
         const editor = view?.editor
         const line = editor?.getLine(editor.getCursor().line) || ''
-        const valid = !!(view?.file && line.match(new RegExp(`\\^${this.tasks.blockPrefix}(\\d+)$`)))
+        const valid = !!(view?.file && line.match(new RegExp(`\\^${this.tasks.blockPrefix}([A-Za-z0-9]+)$`)))
         if (checking) {
           return valid
         } else if (valid) {
@@ -147,6 +149,26 @@ export default class TaskZeroPlugin extends Plugin {
    * See https://taskzero.alan.gr/master-device for more details.
    */
   isMaster () { return this.app.appId === this.settings.masterAppId }
+
+  /**
+   * Short identifier for this device, used for block ID prefixes and per-device
+   * sync file names. 2 lowercase letters, randomly generated on first run and
+   * persisted in settings. Decoupled from `app.appId` (which is only used as
+   * the collision-detection signal inside the per-device sync file).
+   */
+  get deviceId () { return this.settings.deviceId }
+
+  ensureDeviceId () {
+    if (this.settings.deviceId) return
+    this.settings.deviceId = generateDeviceId()
+    void this.saveSettings()
+  }
+}
+
+function generateDeviceId (): string {
+  const a = 'a'.charCodeAt(0)
+  const pick = () => String.fromCharCode(a + Math.floor(Math.random() * 26))
+  return pick() + pick()
 }
 
 declare global {

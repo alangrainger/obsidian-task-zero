@@ -24,7 +24,7 @@ export class Tasks {
   readonly app: App
   readonly plugin: TaskZeroPlugin
   readonly db: Database
-  #noteUpdateQueue: Set<number> = new Set([])
+  #noteUpdateQueue: Set<string> = new Set([])
   readonly #debounceQueueUpdate: () => void
 
   constructor (plugin: TaskZeroPlugin) {
@@ -43,11 +43,19 @@ export class Tasks {
     }))
   }
 
+  /**
+   * Async startup: load the per-device sync file (or migrate from legacy
+   * settings.database.tasks.rows on first run).
+   */
+  async load () {
+    await this.db.load()
+  }
+
   get blockPrefix () {
     return this.plugin.settings.taskBlockPrefix
   }
 
-  taskLineRegex (id: number) {
+  taskLineRegex (id: string) {
     const prefix = this.blockPrefix
     return new RegExp(`^[ \\t]*- \\[.][^\n]+\\^${prefix}${id}[ \\t]*$`, 'm')
   }
@@ -117,7 +125,7 @@ export class Tasks {
     }
   }
 
-  getTaskById (id: number) {
+  getTaskById (id: string) {
     const task = new Task(this)
     task.initFromId(id)
     return task
@@ -147,7 +155,7 @@ export class Tasks {
   /**
    * Does this task have any direct child that is not orphaned and not completed?
    */
-  hasActiveDirectChildren (parentId: number): boolean {
+  hasActiveDirectChildren (parentId: string): boolean {
     return this.db.rows().some(row =>
       row.parent === parentId && row.status !== TaskStatus.DONE && !row.orphaned)
   }
@@ -186,7 +194,7 @@ export class Tasks {
   /**
    * Queue tasks for update in the original note, using the data from the DB
    */
-  addTaskToUpdateQueue (id: number) {
+  addTaskToUpdateQueue (id: string) {
     debug('Adding to queue: ' + id)
     this.#noteUpdateQueue.add(id)
     this.#debounceQueueUpdate()
@@ -278,7 +286,7 @@ export class Tasks {
   /**
    * Orphan tasks from a given path, excluding ones from the keepIds array
    */
-  orphanTasksFromPath (path: string, keepIds: number[] = []) {
+  orphanTasksFromPath (path: string, keepIds: string[] = []) {
     const tasks = this.db.rows()
       .filter(row =>
         !row.orphaned &&

@@ -41,7 +41,7 @@ type TaskInitResult = {
 }
 
 export interface TaskRow {
-  id: number
+  id: string       // unique task identifier — legacy IDs are pure digits ("11"), new IDs are deviceId-prefixed ("ab1")
   status: TaskStatus
   text: string
   path: string
@@ -49,14 +49,16 @@ export interface TaskRow {
   created: string
   orphaned: number // If the task is not present in any note
   line: number     // The line number of the task in the original note (used for sequencing project sub-tasks)
-  parent: number   // The parent task ID, if this is a sub-task
+  parent: string   // The parent task ID, if this is a sub-task; '' if no parent
   due: string
   scheduled: string
   completed: string
+  updatedAt: number // ms timestamp of last meaningful write — used for cross-device LWW merge
+  updatedBy: string // deviceId of the writer that produced this version
 }
 
 export class Task implements TaskRow {
-  id = 0
+  id = ''
   status = $state(TaskStatus.TODO)
   text = $state('')
   path = ''
@@ -64,10 +66,12 @@ export class Task implements TaskRow {
   created = ''
   type = $state(TaskType.INBOX)
   line = 0
-  parent = 0
+  parent = ''
   due = ''
   scheduled = ''
   completed = ''
+  updatedAt = 0
+  updatedBy = ''
   renderedMarkdown = $state('')
   markdownComponent = new Component()
   markdownTaskParser: MarkdownTaskParser
@@ -123,7 +127,7 @@ export class Task implements TaskRow {
         parentId = parentTask.parent
         ancestors.push(parentTask)
       } else {
-        parentId = 0
+        parentId = ''
       }
     }
     return ancestors.reverse()
@@ -139,10 +143,10 @@ export class Task implements TaskRow {
    * Return all subtasks for this task/project (including completed tasks)
    */
   get descendants (): Task[] {
-    const tasks = this.#tasks.db.rows().filter(row => row.parent > 0 && row.orphaned === 0)
+    const tasks = this.#tasks.db.rows().filter(row => row.parent && row.orphaned === 0)
 
     // Recursive function to get descendants
-    const getDescendants = (parentId: number): Task[] => {
+    const getDescendants = (parentId: string): Task[] => {
       return tasks
         .filter(row => row.parent === parentId)
         .map(row => [
@@ -170,8 +174,8 @@ export class Task implements TaskRow {
    */
   get hasActiveDescendants (): boolean {
     const rows = this.#tasks.db.rows()
-    const queue: number[] = [this.id]
-    const seen = new Set<number>()
+    const queue: string[] = [this.id]
+    const seen = new Set<string>()
     while (queue.length) {
       const parentId = queue.shift()!
       for (const row of rows) {
@@ -186,7 +190,7 @@ export class Task implements TaskRow {
 
   get #DEFAULT_DATA (): TaskRow {
     return {
-      id: 0,
+      id: '',
       status: TaskStatus.TODO,
       text: '',
       path: '',
@@ -194,10 +198,12 @@ export class Task implements TaskRow {
       created: moment().format(),
       type: TaskType.INBOX,
       line: 0,
-      parent: 0,
+      parent: '',
       due: '',
       scheduled: '',
-      completed: ''
+      completed: '',
+      updatedAt: 0,
+      updatedBy: ''
     }
   }
 
@@ -226,7 +232,9 @@ export class Task implements TaskRow {
       parent: this.parent,
       due: this.due,
       scheduled: this.scheduled,
-      completed: this.completed
+      completed: this.completed,
+      updatedAt: this.updatedAt,
+      updatedBy: this.updatedBy
     }
   }
 
@@ -234,7 +242,7 @@ export class Task implements TaskRow {
     Object.keys(data).forEach(key => this[key] = data[key])
   }
 
-  initFromId (id: number) {
+  initFromId (id: string) {
     const row = this.#tasks.db.getRow(id)
     if (row) {
       this.initFromRow(row)
@@ -280,13 +288,13 @@ export class Task implements TaskRow {
 
     // Check if this ID has already been used on this page (duplicate ID)
     const previousIds = previous.map(i => i.task.id)
-    if (parsed.id && previousIds.includes(parsed.id)) parsed.id = 0
+    if (parsed.id && previousIds.includes(parsed.id)) parsed.id = ''
 
     // Default task
     let record = this.#DEFAULT_DATA
 
     // Check DB for existing task
-    const existing = this.#tasks.db.getRow(parsed.id || 0)
+    const existing = this.#tasks.db.getRow(parsed.id || '')
 
     // Overwrite the base record with database-data (if any), then parsed data
     record = assignExisting(record, existing, parsed)
@@ -345,7 +353,7 @@ export class Task implements TaskRow {
     } else {
       // The note is the source-of-truth, so if the task has been re-ordered and there's
       // no longer a parent, we need to update the DB to match
-      record.parent = 0
+      record.parent = ''
       // If it was previously a dependent task in a project, send it back to the inbox to be classified
       if (record.type === TaskType.DEPENDENT) record.type = TaskType.INBOX
     }
@@ -377,9 +385,9 @@ export class Task implements TaskRow {
    * to find the task.
    */
   initFromMarkdownTask (markdownTask: string) {
-    const idMatch = markdownTask.match(new RegExp(`\\^${this.blockPrefix}(\\d+)\\s*$`))
+    const idMatch = markdownTask.match(new RegExp(`\\^${this.blockPrefix}([A-Za-z0-9]+)\\s*$`))
     if (idMatch && idMatch[1]) {
-      return this.initFromId(+idMatch[1])
+      return this.initFromId(idMatch[1])
     } else {
       return this.#initFromTextOrMarkdownTask(markdownTask, true)
     }
@@ -407,7 +415,7 @@ export class Task implements TaskRow {
     let parent = this.parent
     while (parent) {
       indent++
-      parent = this.#tasks.db.getRow(parent)?.parent || 0
+      parent = this.#tasks.db.getRow(parent)?.parent || ''
     }
 
     // Scheduled date
@@ -471,7 +479,7 @@ export class Task implements TaskRow {
    * @param beforeTask - (optional) Move it before the task with this ID
    * @param afterTask - (optional) Move it after the task with this ID
    */
-  async move (toPath: string, beforeTask?: number, afterTask?: number) {
+  async move (toPath: string, beforeTask?: string, afterTask?: string) {
     const newFile = this.#app.vault.getFileByPath(toPath)
     if (!newFile) {
       debug('Unable to move task to ' + toPath)

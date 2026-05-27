@@ -93,6 +93,7 @@ export interface TaskZeroSettings {
   }
   tasklistTabs: Tab[];
   masterAppId: string;
+  deviceId: string;
   database: {
     tasks: {
       autoincrement: number;
@@ -180,6 +181,7 @@ export const DEFAULT_SETTINGS: TaskZeroSettings = {
   },
   tasklistTabs: [],
   masterAppId: '',
+  deviceId: '',
   database: {
     tasks: {
       autoincrement: 1,
