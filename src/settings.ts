@@ -93,6 +93,7 @@ export interface TaskZeroSettings {
   }
   tasklistTabs: Tab[];
   deviceId: string;
+  hidePluginFolder: boolean;
   database: {
     tasks: {
       autoincrement: number;
@@ -180,6 +181,7 @@ export const DEFAULT_SETTINGS: TaskZeroSettings = {
   },
   tasklistTabs: [],
   deviceId: '',
+  hidePluginFolder: true,
   database: {
     tasks: {
       autoincrement: 1,
@@ -239,6 +241,17 @@ export class DoSettingTab extends PluginSettingTab {
           this.plugin.settings.styleBlockId = value
           await this.plugin.saveSettings()
           this.plugin.applyRootClass()
+        }))
+
+    new Setting(containerEl)
+      .setName('Hide plugin folder')
+      .setDesc('Hides the _taskzero folder (used by the plugin for storage and multi-device sync) from the file explorer. The folder still exists on disk and syncs normally — this only affects the file tree display.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.hidePluginFolder)
+        .onChange(async value => {
+          this.plugin.settings.hidePluginFolder = value
+          await this.plugin.saveSettings()
+          this.plugin.applyPluginFolderVisibility()
         }))
 
     new Setting(containerEl)

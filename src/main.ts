@@ -21,6 +21,7 @@ export default class TaskZeroPlugin extends Plugin {
     this.ensureDeviceId()
     this.addSettingTab(new DoSettingTab(this.app, this))
     this.applyRootClass()
+    this.applyPluginFolderVisibility()
     this.userActivity = new DetectUser()
     this.#updateQueue = new UpdateQueue(this)
 
@@ -92,6 +93,7 @@ export default class TaskZeroPlugin extends Plugin {
     this.#updateQueue.unload()
     this.userActivity.unload()
     dbEvents.destroy()
+    document.body.removeClass('task-zero-hide-plugin-folder')
     delete window.tz
   }
 
@@ -108,6 +110,14 @@ export default class TaskZeroPlugin extends Plugin {
       document.body.addClass('task-zero')
     } else {
       document.body.removeClass('task-zero')
+    }
+  }
+
+  applyPluginFolderVisibility () {
+    if (this.settings.hidePluginFolder) {
+      document.body.addClass('task-zero-hide-plugin-folder')
+    } else {
+      document.body.removeClass('task-zero-hide-plugin-folder')
     }
   }
 

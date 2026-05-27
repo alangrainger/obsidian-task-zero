@@ -4,7 +4,7 @@ import { debug } from '../functions'
 import type TaskZeroPlugin from '../main'
 import type { TaskRow } from './task.svelte'
 
-const SYNC_FOLDER = '_taskzero'
+const PLUGIN_FOLDER = '_taskzero'
 const DEVICE_FILE_RE = /^_taskzero\/db-[a-z]{2}\.json$/
 
 type DeviceFileData = {
@@ -76,11 +76,11 @@ export class Database {
 
   async #loadOtherDeviceFiles () {
     const adapter = this.#plugin.app.vault.adapter
-    if (!(await adapter.exists(SYNC_FOLDER))) return
+    if (!(await adapter.exists(PLUGIN_FOLDER))) return
 
     const ownPath = this.ownFilePath()
     try {
-      const list = await adapter.list(SYNC_FOLDER)
+      const list = await adapter.list(PLUGIN_FOLDER)
       for (const file of list.files) {
         if (file === ownPath) continue
         if (!DEVICE_FILE_RE.test(file)) continue
@@ -140,7 +140,7 @@ export class Database {
   }
 
   ownFilePath () {
-    return `${SYNC_FOLDER}/db-${this.#plugin.deviceId}.json`
+    return `${PLUGIN_FOLDER}/db-${this.#plugin.deviceId}.json`
   }
 
   isDeviceFile (path: string): boolean {
@@ -153,8 +153,8 @@ export class Database {
 
   async #ensureFolder () {
     const adapter = this.#plugin.app.vault.adapter
-    if (!(await adapter.exists(SYNC_FOLDER))) {
-      await adapter.mkdir(SYNC_FOLDER)
+    if (!(await adapter.exists(PLUGIN_FOLDER))) {
+      await adapter.mkdir(PLUGIN_FOLDER)
     }
   }
 
