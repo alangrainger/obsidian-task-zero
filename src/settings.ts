@@ -213,7 +213,7 @@ export class DoSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Default task note')
-      .setDesc('The note that will be used to store tasks when creating from Quick Add.')
+      .setDesc('The note that will be used to store tasks when creating from quick add.')
       .addText(text => {
         new FileSuggest(this.app, text.inputEl, (file: TFile) => {
           this.plugin.settings.defaultNote = file.path || DEFAULT_SETTINGS.defaultNote
@@ -224,7 +224,7 @@ export class DoSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Archived task note')
-      .setDesc('The note that will be used to store completed tasks when you run the Archive command.')
+      .setDesc('The note that will be used to store completed tasks when you run the archive command.')
       .addText(text => {
         new FileSuggest(this.app, text.inputEl, (file: TFile) => {
           this.plugin.settings.archiveNote = file.path || DEFAULT_SETTINGS.archiveNote
@@ -234,7 +234,9 @@ export class DoSettingTab extends PluginSettingTab {
       })
 
     new Setting(containerEl)
+      // eslint-disable-next-line obsidianmd/ui/sentence-case
       .setName('Style task block IDs')
+      // eslint-disable-next-line obsidianmd/ui/sentence-case
       .setDesc('Task Zero identifies tasks by adding a block ID to each task line. By default it styles those block IDs to make them less visually obvious. Turn this off if you want Obsidian\'s standard block ID styling.')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.styleBlockId)
@@ -332,7 +334,6 @@ export class DoSettingTab extends PluginSettingTab {
           this.plugin.settings.taskBlockPrefix = value || DEFAULT_SETTINGS.taskBlockPrefix
           await this.plugin.saveSettings()
         }))
-
 
     new Setting(containerEl)
       .setName('Hide plugin folder')

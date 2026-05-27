@@ -285,7 +285,7 @@ export class Tasks {
   async archiveTasksFromPath (path: string) {
     if (!this.plugin.settings.archiveNote) return
     const file = this.app.vault.getFileByPath(path)
-    let completedTasks: string[] = []
+    const completedTasks: string[] = []
     // Remove tasks from original file
     if (file instanceof TFile) {
       await this.app.vault.process(file, data => {

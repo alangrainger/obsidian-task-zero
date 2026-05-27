@@ -71,7 +71,7 @@ export class MoveFileModal extends Modal {
             .forEach(task => { dropdown.addOption(task.id, task.text) })
           dropdown
             .setValue(this.otherTaskId)
-            .onChange(value => this.otherTaskId = value)
+            .onChange(value => { this.otherTaskId = value })
         })
     }
 

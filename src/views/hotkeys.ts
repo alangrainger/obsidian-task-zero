@@ -48,7 +48,7 @@ export class HotkeyModal extends Modal {
 
     new Setting(contentEl)
       .setHeading()
-      .setName('Keyboard Shortcuts')
+      .setName('Keyboard shortcuts')
 
     for (const [key, description] of Object.entries(HOTKEY_DESCRIPTIONS)) {
       const hotkey = this.plugin.settings.hotkeys[key as HotkeyAction]

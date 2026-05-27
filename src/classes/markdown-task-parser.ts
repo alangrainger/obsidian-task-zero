@@ -70,7 +70,8 @@ export class MarkdownTaskParser {
     // Ensure all icons are removed from the final task line
     Object.values(TaskEmoji)
       .forEach(emoji => {
-        while (emoji && this.#taskline.includes(emoji)) {
+        if (!emoji) return
+        while (this.#taskline.includes(emoji)) {
           this.#taskline = this.#taskline.replace(emoji, ' ')
         }
       })

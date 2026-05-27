@@ -2,7 +2,6 @@ import { MarkdownView, Plugin, type WorkspaceLeaf } from 'obsidian'
 import { DEFAULT_SETTINGS, type TaskZeroSettings, DoSettingTab } from './settings'
 import { Tasks } from './classes/tasks'
 import { TASK_ZERO_VIEW_TYPE, TaskZeroView } from './views/task-view'
-import { debug } from './functions'
 import { DetectUser } from './classes/detect-user'
 import { UpdateQueue } from './classes/update-queue'
 import { DatabaseEvent, dbEvents } from './classes/database-events'
@@ -32,7 +31,7 @@ export default class TaskZeroPlugin extends Plugin {
       TASK_ZERO_VIEW_TYPE,
       (leaf) => new TaskZeroView(leaf, this)
     )
-    this.addRibbonIcon('square-check-big', 'Open Tasklist', () => {
+    this.addRibbonIcon('square-check-big', 'Open tasklist', () => {
       void this.#activateView()
     })
 
@@ -45,7 +44,7 @@ export default class TaskZeroPlugin extends Plugin {
 
     this.addCommand({
       id: 'open-tasklist',
-      name: 'Open the Tasklist',
+      name: 'Open the tasklist',
       callback: () => this.#activateView()
     })
 

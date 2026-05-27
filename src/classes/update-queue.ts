@@ -19,8 +19,8 @@ export class UpdateQueue {
   }
 
   #initQueue () {
-    activeWindow.clearInterval(this.#cacheChangeInterval)
-    this.#cacheChangeInterval = activeWindow.setInterval(() => {
+    window.clearInterval(this.#cacheChangeInterval)
+    this.#cacheChangeInterval = window.setInterval(() => {
       // Store the time the queue was last executed, so that we can identify if it fails
       this.#plugin.settings.database.lastQueueCheck = Date.now()
       void (async () => {
@@ -33,8 +33,7 @@ export class UpdateQueue {
 
   #checkQueue () {
     // If the queue hasn't run in the last 2 minutes, restart it
-    if (this.#plugin.settings.database.lastQueueCheck < Date.now() - 1000 * 60 * 2)
-      this.#initQueue()
+    if (this.#plugin.settings.database.lastQueueCheck < Date.now() - 1000 * 60 * 2) { this.#initQueue() }
   }
 
   add (path: string) {
@@ -89,6 +88,6 @@ export class UpdateQueue {
   }
 
   unload () {
-    activeWindow.clearInterval(this.#cacheChangeInterval)
+    window.clearInterval(this.#cacheChangeInterval)
   }
 }
