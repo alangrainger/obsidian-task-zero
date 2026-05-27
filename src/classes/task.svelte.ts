@@ -164,6 +164,26 @@ export class Task implements TaskRow {
     return this.descendants.filter(child => !child.isCompleted)
   }
 
+  /**
+   * Cheap check for "does this task have any uncompleted descendant?".
+   * Walks rows iteratively without instantiating Task objects.
+   */
+  get hasActiveDescendants (): boolean {
+    const rows = this.#tasks.db.rows()
+    const queue: number[] = [this.id]
+    const seen = new Set<number>()
+    while (queue.length) {
+      const parentId = queue.shift()!
+      for (const row of rows) {
+        if (row.parent !== parentId || row.orphaned !== 0 || seen.has(row.id)) continue
+        if (row.status !== TaskStatus.DONE) return true
+        seen.add(row.id)
+        queue.push(row.id)
+      }
+    }
+    return false
+  }
+
   get #DEFAULT_DATA (): TaskRow {
     return {
       id: 0,
