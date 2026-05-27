@@ -99,15 +99,18 @@ export default class TaskZeroPlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
   }
 
-  async saveSettings () {
+  async saveSettings (force = false) {
     /*
       Only the master device can make changes to the data.json, to prevent issues
       with two devices modifying copies of the database and causing lost data.
       The master device can be revoked from inside the Settings page.
 
+      `force` bypasses this for internal cases (e.g. deviceId regeneration on
+      collision) where the non-master device still needs to persist a setting.
+
       See https://taskzero.alan.gr/master-device for more details.
      */
-    if (this.isMaster() || !this.settings.masterAppId) {
+    if (force || this.isMaster() || !this.settings.masterAppId) {
       await this.saveData(this.settings)
     } else {
       debug('Not saving settings, as not the master device')
@@ -161,7 +164,17 @@ export default class TaskZeroPlugin extends Plugin {
   ensureDeviceId () {
     if (this.settings.deviceId) return
     this.settings.deviceId = generateDeviceId()
-    void this.saveSettings()
+    void this.saveSettings(true)
+  }
+
+  /**
+   * Called when we detect this device collided with another (our db file
+   * already exists with a different appId inside). Pick a new deviceId and
+   * persist it. The old db file effectively belongs to the other device now.
+   */
+  regenerateDeviceId () {
+    this.settings.deviceId = generateDeviceId()
+    void this.saveSettings(true)
   }
 }
 

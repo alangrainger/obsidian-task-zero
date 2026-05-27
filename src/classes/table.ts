@@ -5,6 +5,7 @@ import type TaskZeroPlugin from '../main'
 import type { TaskRow } from './task.svelte'
 
 const SYNC_FOLDER = '_taskzero'
+const DEVICE_FILE_RE = /^_taskzero\/db-[a-z]{2}\.json$/
 
 type DeviceFileData = {
   appId: string
@@ -21,44 +22,133 @@ export class Database {
   constructor (plugin: TaskZeroPlugin) {
     this.#plugin = plugin
 
-    // Set up debounce for database write to disk
     this.#saveDb = debounce(() => {
-      void this.#writeDeviceFile()
+      void this.writeOwnFile()
     }, 3000)
   }
 
   /**
-   * Async load step: read this device's sync file, or migrate from the legacy
-   * data.json rows if no device file exists yet.
+   * Async startup: load this device's sync file (or migrate from legacy
+   * settings rows), then merge in all other device files we can see.
    */
   async load () {
-    const path = this.#filePath()
-    const adapter = this.#plugin.app.vault.adapter
-    try {
-      if (await adapter.exists(path)) {
-        const contents = await adapter.read(path)
-        const data = JSON.parse(contents) as DeviceFileData
-        this.#rows = Array.isArray(data.rows) ? data.rows : []
-      } else {
-        // Legacy migration: copy rows out of settings.database.tasks.rows
-        const legacy = this.#plugin.settings.database.tasks
-        this.#rows = Array.isArray(legacy?.rows) ? [...legacy.rows] : []
-      }
-    } catch (e) {
-      debug('Failed to load device file, starting empty', e)
-      this.#rows = []
-    }
+    await this.#loadOwnFile()
+    await this.#loadOtherDeviceFiles()
 
     this.#migrateLegacyIds()
     this.#backfillSyncMetadata()
     this.#loaded = true
 
-    // Persist the initial state so the device file exists going forward
-    await this.#writeDeviceFile()
+    // Persist initial state so the file exists and is filtered correctly
+    await this.writeOwnFile()
   }
 
-  #filePath () {
+  async #loadOwnFile () {
+    const path = this.ownFilePath()
+    const adapter = this.#plugin.app.vault.adapter
+    try {
+      if (await adapter.exists(path)) {
+        const contents = await adapter.read(path)
+        const data = JSON.parse(contents) as DeviceFileData
+
+        // Collision detection — file claims to be ours but another device
+        // wrote it. Re-roll our deviceId and start fresh; the file we just
+        // read now belongs to that other device and its rows will come in
+        // via #loadOtherDeviceFiles().
+        if (data.appId && data.appId !== this.#plugin.app.appId) {
+          debug(`Device ID collision on db-${this.#plugin.deviceId}.json; regenerating deviceId`)
+          this.#plugin.regenerateDeviceId()
+          this.#rows = []
+          return
+        }
+
+        this.#rows = Array.isArray(data.rows) ? data.rows : []
+      } else {
+        // First run after upgrade — migrate from legacy settings.database.tasks.rows
+        const legacy = this.#plugin.settings.database.tasks
+        this.#rows = Array.isArray(legacy?.rows) ? [...legacy.rows] : []
+      }
+    } catch (e) {
+      debug('Failed to load own device file', e)
+      this.#rows = []
+    }
+  }
+
+  async #loadOtherDeviceFiles () {
+    const adapter = this.#plugin.app.vault.adapter
+    if (!(await adapter.exists(SYNC_FOLDER))) return
+
+    const ownPath = this.ownFilePath()
+    try {
+      const list = await adapter.list(SYNC_FOLDER)
+      for (const file of list.files) {
+        if (file === ownPath) continue
+        if (!DEVICE_FILE_RE.test(file)) continue
+        await this.#mergeFile(file)
+      }
+    } catch (e) {
+      debug('Failed to list device files', e)
+    }
+  }
+
+  /**
+   * Read a single device file and merge its rows in-memory using per-task LWW.
+   * Returns true if anything changed.
+   */
+  async mergeFile (path: string): Promise<boolean> {
+    return this.#mergeFile(path)
+  }
+
+  async #mergeFile (path: string): Promise<boolean> {
+    try {
+      const contents = await this.#plugin.app.vault.adapter.read(path)
+      const data = JSON.parse(contents) as DeviceFileData
+      return this.#mergeRows(data.rows || [])
+    } catch (e) {
+      debug('Failed to read device file ' + path, e)
+      return false
+    }
+  }
+
+  #mergeRows (incoming: TaskRow[]): boolean {
+    let changed = false
+    for (const row of incoming) {
+      const index = this.#rows.findIndex(r => r.id === row.id)
+      if (index === -1) {
+        this.#rows.push(row)
+        changed = true
+      } else {
+        const existing = this.#rows[index]
+        if (this.#isNewer(row, existing)) {
+          this.#rows[index] = row
+          changed = true
+        }
+      }
+    }
+    return changed
+  }
+
+  /**
+   * Is `a` a newer version of the same task than `b`? Per-task LWW by
+   * updatedAt, tiebreak by updatedBy lexicographic.
+   */
+  #isNewer (a: TaskRow, b: TaskRow): boolean {
+    const at = a.updatedAt || 0
+    const bt = b.updatedAt || 0
+    if (at !== bt) return at > bt
+    return (a.updatedBy || '') > (b.updatedBy || '')
+  }
+
+  ownFilePath () {
     return `${SYNC_FOLDER}/db-${this.#plugin.deviceId}.json`
+  }
+
+  isDeviceFile (path: string): boolean {
+    return DEVICE_FILE_RE.test(path)
+  }
+
+  isOwnFile (path: string): boolean {
+    return path === this.ownFilePath()
   }
 
   async #ensureFolder () {
@@ -68,18 +158,25 @@ export class Database {
     }
   }
 
-  async #writeDeviceFile () {
+  /**
+   * Write this device's file. Only includes rows where updatedBy === my
+   * deviceId — every task lives in exactly one device file (its current
+   * owner's file). Ownership transfers naturally on edit.
+   */
+  async writeOwnFile () {
     if (!this.#loaded) return
     try {
       await this.#ensureFolder()
+      const myDeviceId = this.#plugin.deviceId
+      const myRows = this.#rows.filter(r => r.updatedBy === myDeviceId)
       const data: DeviceFileData = {
         appId: this.#plugin.app.appId,
-        deviceId: this.#plugin.deviceId,
-        rows: this.#rows
+        deviceId: myDeviceId,
+        rows: myRows
       }
-      await this.#plugin.app.vault.adapter.write(this.#filePath(), JSON.stringify(data, null, 2))
+      await this.#plugin.app.vault.adapter.write(this.ownFilePath(), JSON.stringify(data, null, 2))
     } catch (e) {
-      debug('Failed to write device file', e)
+      debug('Failed to write own device file', e)
     }
   }
 

@@ -41,6 +41,24 @@ export class Tasks {
     plugin.registerEvent(this.app.vault.on('delete', file => {
       if (file instanceof TFile) this.orphanTasksFromPath(file.path)
     }))
+
+    // Watch for sync-delivered changes to other devices' db files
+    plugin.registerEvent(this.app.vault.on('modify', file => {
+      if (!(file instanceof TFile)) return
+      if (!this.db.isDeviceFile(file.path) || this.db.isOwnFile(file.path)) return
+      void this.#onPeerFileChanged(file.path)
+    }))
+  }
+
+  async #onPeerFileChanged (path: string) {
+    const changed = await this.db.mergeFile(path)
+    if (changed) {
+      // Re-write our own file so any tasks now owned by other devices get
+      // dropped from our file (Option B: each task lives in exactly one
+      // device file).
+      await this.db.writeOwnFile()
+      dbEvents.emit(DatabaseEvent.TasksExternalChange)
+    }
   }
 
   /**
