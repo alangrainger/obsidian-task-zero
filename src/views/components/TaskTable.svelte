@@ -93,56 +93,6 @@
   const listUp = () => state.activeId = state.tasks[Math.max(activeIndex - 1, 0)].id
   const listDown = () => state.activeId = getRowDown().id
 
-  /*
-   * Hotkeys that apply to both tasklist and sidebar views
-   */
-  const hotkeys = plugin.settings.hotkeys
-  scopes.tasklistAndSidebar.addHotkeys([
-    [hotkeys[HotkeyAction.TASKLIST_SIDEBAR_CLOSE], () => state.sidebar.open = false],
-    [{
-      key: 'ArrowUp',
-      modifiers: ['Alt']
-    }, listUp],
-    [{
-      key: 'ArrowDown',
-      modifiers: ['Alt']
-    }, listDown],
-    // ['p', ['Alt'], () => setTaskType(TaskType.PROJECT)],
-    // ['a', ['Alt'], () => setTaskType(TaskType.NEXT_ACTION)],
-    // ['s', ['Alt'], () => setTaskType(TaskType.SOMEDAY)],
-    // ['w', ['Alt'], () => setTaskType(TaskType.WAITING_ON)]
-  ])
-
-  // Hotkeys for tasklist only
-  scopes.tasklist.addHotkeys([
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_UP], listUp],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN], listDown],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_UP_ALT], listUp],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN_ALT], listDown],
-    [hotkeys[HotkeyAction.TASKLIST_OPEN_ACTIVE_ROW], openActiveRow],
-    [hotkeys[HotkeyAction.TASKLIST_TOGGLE_COMPLETED], () => {
-      activeTask.toggle()
-      listDown()
-    }],
-    [hotkeys[HotkeyAction.TASK_SET_TYPE_PROJECT], () => setTaskType(TaskType.PROJECT)],
-    [hotkeys[HotkeyAction.TASK_SET_TYPE_NEXT_ACTION], () => setTaskType(TaskType.NEXT_ACTION)],
-    [hotkeys[HotkeyAction.TASK_SET_TYPE_SOMEDAY], () => setTaskType(TaskType.SOMEDAY)],
-    [hotkeys[HotkeyAction.TASK_SET_TYPE_WAITING_ON], () => setTaskType(TaskType.WAITING_ON)],
-    [hotkeys[HotkeyAction.TASKLIST_MOVE_TASK], () => { if (activeTask) new MoveToProjectModal(plugin, activeTask).open() }],
-    [hotkeys[HotkeyAction.TASKLIST_NEW_TASK], newTask],
-    [{
-      key: '?',
-      modifiers: ['Shift']
-    }, () => new HotkeyModal(plugin).open()]
-  ])
-
-  // Add hotkeys for Alt + 1-9 for switching tabs
-  Array.from({ length: 9 }, (_, index) => index + 1)
-    .forEach(num => scopes.tasklist.addHotkey({
-      key: num.toString(),
-      modifiers: ['Alt']
-    }, () => switchTab(num)))
-
   /**
    * Refresh the tasklist
    * @param resetPosition - Optionally move the highlighted row back to the top
@@ -265,15 +215,54 @@
     return ''
   }
 
-  // Update tasks list when tasks DB changes
-  dbEvents.on(DatabaseEvent.TasksExternalChange, refresh)
-  dbEvents.on(DatabaseEvent.TaskToggled, debounceRefresh)
-  dbEvents.on(DatabaseEvent.OpenTasklistView, () => state.viewIsActive = true)
-  dbEvents.on(DatabaseEvent.TasksChanged, () => {
+  // Stable refs so dbEvents.off can remove the same listener that .on added
+  function handleViewOpened () { state.viewIsActive = true }
+  function handleTasksChanged () {
     if (!plugin.userActivity.isActive()) refresh()
-  })
+  }
 
   onMount(() => {
+    // Hotkeys that apply to both tasklist and sidebar views
+    const hotkeys = plugin.settings.hotkeys
+    scopes.tasklistAndSidebar.addHotkeys([
+      [hotkeys[HotkeyAction.TASKLIST_SIDEBAR_CLOSE], () => state.sidebar.open = false],
+      [{ key: 'ArrowUp', modifiers: ['Alt'] }, listUp],
+      [{ key: 'ArrowDown', modifiers: ['Alt'] }, listDown]
+    ])
+
+    // Hotkeys for tasklist only
+    scopes.tasklist.addHotkeys([
+      [hotkeys[HotkeyAction.TASKLIST_MOVE_UP], listUp],
+      [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN], listDown],
+      [hotkeys[HotkeyAction.TASKLIST_MOVE_UP_ALT], listUp],
+      [hotkeys[HotkeyAction.TASKLIST_MOVE_DOWN_ALT], listDown],
+      [hotkeys[HotkeyAction.TASKLIST_OPEN_ACTIVE_ROW], openActiveRow],
+      [hotkeys[HotkeyAction.TASKLIST_TOGGLE_COMPLETED], () => {
+        activeTask.toggle()
+        listDown()
+      }],
+      [hotkeys[HotkeyAction.TASK_SET_TYPE_PROJECT], () => setTaskType(TaskType.PROJECT)],
+      [hotkeys[HotkeyAction.TASK_SET_TYPE_NEXT_ACTION], () => setTaskType(TaskType.NEXT_ACTION)],
+      [hotkeys[HotkeyAction.TASK_SET_TYPE_SOMEDAY], () => setTaskType(TaskType.SOMEDAY)],
+      [hotkeys[HotkeyAction.TASK_SET_TYPE_WAITING_ON], () => setTaskType(TaskType.WAITING_ON)],
+      [hotkeys[HotkeyAction.TASKLIST_MOVE_TASK], () => { if (activeTask) new MoveToProjectModal(plugin, activeTask).open() }],
+      [hotkeys[HotkeyAction.TASKLIST_NEW_TASK], newTask],
+      [{ key: '?', modifiers: ['Shift'] }, () => new HotkeyModal(plugin).open()]
+    ])
+
+    // Alt + 1-9 for switching tabs
+    Array.from({ length: 9 }, (_, index) => index + 1)
+      .forEach(num => scopes.tasklist.addHotkey({
+        key: num.toString(),
+        modifiers: ['Alt']
+      }, () => switchTab(num)))
+
+    // Update tasks list when tasks DB changes
+    dbEvents.on(DatabaseEvent.TasksExternalChange, refresh)
+    dbEvents.on(DatabaseEvent.TaskToggled, debounceRefresh)
+    dbEvents.on(DatabaseEvent.OpenTasklistView, handleViewOpened)
+    dbEvents.on(DatabaseEvent.TasksChanged, handleTasksChanged)
+
     // Watch for leaf changes to know when the tasklist is visible/active
     plugin.app.workspace.on('active-leaf-change', watchLeafChanges)
     state.viewIsActive = plugin.app.workspace.getActiveViewOfType(TaskZeroView) !== null
@@ -283,10 +272,8 @@
   onDestroy(() => {
     dbEvents.off(DatabaseEvent.TasksExternalChange, refresh)
     dbEvents.off(DatabaseEvent.TaskToggled, debounceRefresh)
-    dbEvents.off(DatabaseEvent.OpenTasklistView, () => state.viewIsActive = true)
-    dbEvents.off(DatabaseEvent.TasksChanged, () => {
-      if (!plugin.userActivity.isActive()) refresh()
-    })
+    dbEvents.off(DatabaseEvent.OpenTasklistView, handleViewOpened)
+    dbEvents.off(DatabaseEvent.TasksChanged, handleTasksChanged)
     plugin.app.workspace.off('active-leaf-change', watchLeafChanges)
   })
 
