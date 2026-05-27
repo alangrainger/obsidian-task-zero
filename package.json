@@ -1,6 +1,6 @@
 {
 	"name": "task-zero",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "An keyboard-first GTD task management system for Obsidian",
 	"main": "main.js",
 	"scripts": {
