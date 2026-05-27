@@ -11,9 +11,6 @@
 	"keywords": [],
 	"author": "Alan Grainger",
 	"license": "Unlicense",
-	"dependencies": {
-		"@popperjs/core": "2.11.5"
-	},
 	"devDependencies": {
 		"@tsconfig/svelte": "^5.0.8",
 		"@types/node": "^16.11.6",
