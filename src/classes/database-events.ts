@@ -7,14 +7,14 @@ export enum DatabaseEvent {
   TaskToggled = 'tz:task-toggled'
 }
 
+type Callback = () => void
+
 class DatabaseEventEmitter {
   private static instance: DatabaseEventEmitter
-  private events: { [key: string]: Event } = {}
-  private listeners: { event: DatabaseEvent, listener: EventListener }[] = []
+  private readonly listeners = new Map<DatabaseEvent, Set<Callback>>()
 
   private constructor () {
-    Object.values(DatabaseEvent)
-      .forEach(event => this.events[event] = new Event(event))
+    Object.values(DatabaseEvent).forEach(event => this.listeners.set(event, new Set()))
   }
 
   static getInstance (): DatabaseEventEmitter {
@@ -26,23 +26,19 @@ class DatabaseEventEmitter {
 
   emit (event: DatabaseEvent): void {
     debug('Event: ' + event)
-    document.dispatchEvent(this.events[event])
+    this.listeners.get(event)?.forEach(callback => callback())
   }
 
-  on (event: DatabaseEvent, callback: () => void): void {
-    document.addEventListener(event, () => callback())
-
-    // Store the listener for later removal
-    this.listeners.push({ event, listener: () => callback() })
+  on (event: DatabaseEvent, callback: Callback): void {
+    this.listeners.get(event)?.add(callback)
   }
 
-  off (event: DatabaseEvent, callback: () => void): void {
-    document.removeEventListener(event, () => callback())
+  off (event: DatabaseEvent, callback: Callback): void {
+    this.listeners.get(event)?.delete(callback)
   }
 
   destroy () {
-    this.listeners.forEach(({ event, listener }) =>
-      document.removeEventListener(event, listener))
+    this.listeners.forEach(set => set.clear())
   }
 }
 
