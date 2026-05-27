@@ -1,7 +1,7 @@
 {
 	"id": "task-zero",
 	"name": "Task Zero",
-	"version": "0.1.18",
+	"version": "0.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "A keyboard-first GTD task management system.",
 	"author": "Alan Grainger",
