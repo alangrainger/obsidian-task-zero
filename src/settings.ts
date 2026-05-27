@@ -244,17 +244,6 @@ export class DoSettingTab extends PluginSettingTab {
         }))
 
     new Setting(containerEl)
-      .setName('Hide plugin folder')
-      .setDesc('Hides the _taskzero folder (used by the plugin for storage and multi-device sync) from the file explorer. The folder still exists on disk and syncs normally — this only affects the file tree display.')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.hidePluginFolder)
-        .onChange(async value => {
-          this.plugin.settings.hidePluginFolder = value
-          await this.plugin.saveSettings()
-          this.plugin.applyPluginFolderVisibility()
-        }))
-
-    new Setting(containerEl)
       .setHeading()
       .setName('Tasklist tabs')
       .addButton(button => button
@@ -341,6 +330,18 @@ export class DoSettingTab extends PluginSettingTab {
           value = value.replace(/[^A-Za-z]/g, '')
           this.plugin.settings.taskBlockPrefix = value || DEFAULT_SETTINGS.taskBlockPrefix
           await this.plugin.saveSettings()
+        }))
+
+
+    new Setting(containerEl)
+      .setName('Hide plugin folder')
+      .setDesc('Hides the `/_taskzero` folder (used for plugin storage and multi-device sync) from the file tree. The folder name is fixed as all devices must use the same name for sync to work.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.hidePluginFolder)
+        .onChange(async value => {
+          this.plugin.settings.hidePluginFolder = value
+          await this.plugin.saveSettings()
+          this.plugin.applyPluginFolderVisibility()
         }))
 
     new Setting(containerEl)
