@@ -193,16 +193,19 @@ export class Tasks {
   }
 
   async processQueue () {
+    // Snapshot then clear so any concurrent additions go to the next batch
+    const queue = this.#noteUpdateQueue
+    this.#noteUpdateQueue = new Set([])
+
     // Split queue into files
     const grouped: Record<string, Task[]> = {}
-    this.#noteUpdateQueue.forEach(id => {
+    queue.forEach(id => {
       const task = new Task(this).initFromId(id).task
       if (task.valid()) {
         if (!grouped[task.path]) grouped[task.path] = []
         grouped[task.path].push(task)
       }
     })
-    this.#noteUpdateQueue = new Set([])
 
     for (const path of Object.keys(grouped)) {
       await this.updateTasksInNote(path, grouped[path])
