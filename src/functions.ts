@@ -33,8 +33,9 @@ export function assignExisting (
   for (const source of sources) {
     if (!source) continue
     for (const key in source) {
-      if (source[key]) {
-        target[key] = source[key]
+      const value = source[key]
+      if (value !== undefined && value !== null) {
+        target[key] = value
       }
     }
   }

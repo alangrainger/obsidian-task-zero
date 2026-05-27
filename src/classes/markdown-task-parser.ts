@@ -106,20 +106,16 @@ export class MarkdownTaskParser {
     return data
   }
 
-  #getAndRemoveMatch (regex: RegExp): string {
-    let foundText = ''
-    let matching = true
+  #getAndRemoveMatch (regex: RegExp): string | undefined {
+    let result: string | undefined
     // Remove multiple occurrences if they exist
-    while (matching) {
+    while (true) {
       const match = this.#taskline.match(regex)
-      if (match) {
-        foundText = match[1]
-        this.#taskline = this.#taskline.replace(regex, ' ')
-      } else {
-        matching = false
-      }
+      if (!match) break
+      result = match[1] ?? ''
+      this.#taskline = this.#taskline.replace(regex, ' ')
     }
-    return foundText
+    return result
   }
 
   #getId () {
